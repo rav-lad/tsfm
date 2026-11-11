@@ -1,0 +1,87 @@
+# Frozen synthetic evaluation suites (reference §11.1–11.2, sprint D4).
+# Each suite = base config + overlay, with its own seed namespace (split name).
+# Distributions in overlays REPLACE the base distribution (see config.deep_merge).
+#
+#   H1  same priors, new draws                        -> *_id
+#   H2  parameters outside the training support       -> *_ood_noise, *_ood_period, *_ood_horizon
+#   H3  operators / kinds absent from training        -> *_ood_kinds, *_ood_relation
+#
+# val_* : reusable during development.  test_syn_* : final reporting only.
+base_config: data_v1.yaml
+version: holdout_v1
+
+common_overrides:
+  curriculum: {milestones: null}      # suites use a fixed multivariate probability
+
+suites:
+  # ---------------------------------------------------------------- H1
+  val_id:
+    split: val_id
+    n: 5000
+    overrides: {multivariate: {probability: 0.0}}
+  val_mv_id:
+    split: val_id/multivariate
+    n: 2000
+    overrides: {multivariate: {probability: 1.0}}
+
+  # ---------------------------------------------------------------- H2
+  val_ood_noise:
+    split: val_ood/noise
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      prior: {noise_regimes: {extreme_noise: 1.0}}
+      generator_mix: {trend_seasonal: 0.5, complex_periodic: 0.5}
+  val_ood_period:
+    split: val_ood/period
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      prior: {period_band_mode: only}
+      generator_mix: {trend_seasonal: 0.5, complex_periodic: 0.5}
+      univariate_generators:
+        trend_seasonal: {harmonics: [1, 2], harmonics_p: [0.6, 0.4]}
+  val_ood_horizon:
+    split: val_ood/horizon
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      sequence:
+        context_lengths: {512: 0.5, 1024: 0.5}
+        horizons: {384: 1.0}
+
+  # ---------------------------------------------------------------- H3
+  val_ood_kinds:
+    split: val_ood/kinds
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      generator_mix: {complex_periodic: 0.5, events_counts: 0.5}
+      univariate_generators:
+        complex_periodic: {waveforms: {chirp: 1.0}}
+        events_counts: {kinds: {bursts: 1.0}}
+  val_ood_relation:
+    split: val_ood/relation
+    n: 1000
+    overrides:
+      multivariate:
+        probability: 1.0
+        past_only_ops: {cointegration: 1.0}
+        known_future_probability: 0.0
+        decoy_fraction_range: [0.0, 0.0]
+        minimum_decoy_fraction_of_tasks: 0.0
+
+  # ---------------------------------------------------------------- final test (do not look during development)
+  test_syn_id:
+    split: test_syn/id
+    n: 5000
+    overrides: {multivariate: {probability: 0.3}}
+  test_syn_ood_kinds:
+    split: test_syn/kinds
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      generator_mix: {complex_periodic: 0.5, events_counts: 0.5}
+      univariate_generators:
+        complex_periodic: {waveforms: {chirp: 1.0}}
+        events_counts: {kinds: {bursts: 1.0}}

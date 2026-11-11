@@ -1,0 +1,55 @@
+# Data config V0 — sprint D1/D2 (univariate, fast generators only).
+# All numbers are starting hypotheses to ablate (TSFM_DATA_REFERENCE.md §1.2, §15.2).
+schema_version: 1
+seed: 20261107
+training_data: synthetic_only
+
+stage: pilot_univariate
+sequence:
+  context_lengths: {128: 0.15, 256: 0.25, 512: 0.40, 1024: 0.20}
+  horizons:        {24: 0.20, 48: 0.25, 96: 0.35, 192: 0.20}
+  patch_size: 32
+  min_history_observed: 32
+  # extra record length beyond L+H, as a fraction of L+H, so the origin varies
+  origin_slack_fraction: 0.25
+
+# Full target mix from the reference. Families not implemented yet are dropped
+# and the remaining weights renormalized; the *effective* mix is reported.
+generator_mix:
+  trend_seasonal: 0.15
+  complex_periodic: 0.10
+  gaussian_process: 0.15
+  autoregressive: 0.15
+  regime_sde: 0.20
+  events_counts: 0.10
+  composite: 0.15
+
+univariate_generators:
+  trend_seasonal:
+    harmonics: [0, 1, 2, 3]
+    harmonics_p: [0.10, 0.45, 0.30, 0.15]
+  autoregressive:
+    ar1_phi_range: [-0.95, 0.95]   # kept symmetric (neutral prior); asymmetric = ablation
+  gaussian_process:
+    kernel_bank: [rbf, matern, periodic, rational_quadratic, linear, white]
+    max_kernels: 4
+    max_exact_length: 512   # exact Cholesky up to here, Random Fourier Features beyond
+    rff_features: 384
+
+augmentations:
+  probability_any: 0.45
+  max_ops: 3
+
+missingness:
+  complete: 0.70
+  sparse: 0.20
+  block: 0.10
+
+normalization:
+  method: median_mad
+  statistics_window: visible_history_only
+  fallback_scale: 1.0
+
+sampling:
+  on_the_fly: true
+  disjoint_seed_namespaces: [train, val_id, val_ood, test_syn]

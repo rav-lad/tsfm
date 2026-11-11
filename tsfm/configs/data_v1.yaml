@@ -1,0 +1,84 @@
+# Data config V1 — training distribution for the pilot (D4 holdouts + D5 multivariate).
+# Everything that is held out for val_ood is *excluded here* (reference §11.2).
+# All numbers are starting hypotheses to ablate.
+schema_version: 1
+seed: 20261107
+training_data: synthetic_only
+
+stage: pilot_multivariate
+sequence:
+  context_lengths: {128: 0.15, 256: 0.25, 512: 0.40, 1024: 0.20}
+  horizons:        {24: 0.20, 48: 0.25, 96: 0.35, 192: 0.20}
+  patch_size: 32
+  min_history_observed: 32
+  origin_slack_fraction: 0.25
+
+generator_mix:
+  trend_seasonal: 0.15
+  complex_periodic: 0.10
+  gaussian_process: 0.15
+  autoregressive: 0.15
+  regime_sde: 0.20
+  events_counts: 0.10
+  composite: 0.15
+
+# ---- H2 holdouts (parameters outside the training support)
+prior:
+  period_ratio_band: [0.10, 0.14]   # P/L in this band never seen in training
+  period_band_mode: exclude
+  # noise regime "extreme_noise" is not in the default training regimes
+
+univariate_generators:
+  trend_seasonal:
+    harmonics: [0, 1, 2, 3]
+    harmonics_p: [0.10, 0.45, 0.30, 0.15]
+  complex_periodic:
+    # ---- H3 holdout: "chirp" waveform never seen in training
+    waveforms: {sine: 0.11, square: 0.17, sawtooth: 0.17, triangle: 0.11,
+                asymmetric_cycle: 0.17, pulse_train: 0.16, multi_period: 0.11}
+  gaussian_process:
+    kernel_bank: [rbf, matern, periodic, rational_quadratic, linear, white]
+    max_kernels: 4
+    max_exact_length: 512
+    rff_features: 384
+  autoregressive:
+    ar1_phi_range: [-0.95, 0.95]   # symmetric (neutral prior); asymmetric = ablation
+  events_counts:
+    # ---- H3 holdout: "bursts" never seen in training
+    kinds: {intermittent_demand: 0.24, count_process: 0.24, spikes: 0.17,
+            level_shifts: 0.17, promotions: 0.18}
+
+multivariate:
+  enabled: true
+  min_channels: 2
+  max_channels: 4
+  max_targets: 2
+  known_future_probability: 0.35
+  decoy_fraction_range: [0.0, 0.5]
+  minimum_decoy_fraction_of_tasks: 0.15
+  max_lag: 32
+  # ---- H3 holdout: cointegration (R7) never seen in training
+  past_only_ops: {signed_mix: 0.22, lag: 0.33, nonlinear: 0.22, regime_response: 0.11, shared_driver: 0.12}
+  known_future_kinds: {calendar: 0.4, planned_event: 0.35, scheduled_promotion: 0.25}
+
+curriculum:
+  # fraction of multivariate episodes over training progress (t0-alpha-inspired, §15.3)
+  total_episodes: 500000
+  milestones:
+    - {progress: 0.0, multivariate_probability: 0.10}
+    - {progress: 0.5, multivariate_probability: 0.20}
+    - {progress: 1.0, multivariate_probability: 0.40}
+
+augmentations:
+  probability_any: 0.45
+  max_ops: 3
+
+missingness:
+  complete: 0.70
+  sparse: 0.20
+  block: 0.10
+
+normalization:
+  method: median_mad
+  statistics_window: visible_history_only
+  fallback_scale: 1.0

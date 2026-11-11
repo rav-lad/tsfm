@@ -13,11 +13,17 @@ Specification: `../TSFM_DATA_REFERENCE.md` · roadmap: `../roadmap.md`.
 
 ```bash
 uv sync
-uv run pytest -q                                            # 80 tests
+uv run pytest -q                                            # 143 tests
 uv run python scripts/inspect_samples.py --config configs/data_v1.yaml   # grids -> reports/data/samples/
 uv run python scripts/profile_generation.py --config configs/data_v1.yaml
 uv run python scripts/audit_dataset.py --n 5000             # stats + baselines per kind
 uv run python scripts/build_holdouts.py                     # freeze val_* suites -> data/holdouts/holdout_v1/
+uv run python scripts/profile_loader.py --workers 0 4 8     # DataLoader episodes/s
+uv run python scripts/train.py --run-dir runs/v0               # model V0 -> runs/v0/{metrics.jsonl,last.pt,best.pt,eval.json}
+uv run python scripts/train.py --model v1 --run-dir runs/v1   # model V1: 9 quantiles, pinball loss
+uv run python scripts/train.py --model v1 --data-config configs/train_v1.yaml --run-dir runs/v1_short  # + 32/64-point histories
+uv run python scripts/eval_gift.py --download              # GIFT-Eval (1.6 GB) -> data/gift_eval/
+uv run python scripts/eval_gift.py --model runs/v0/best.pt  # zero-shot, 97 configs -> reports/gift_eval/
 uv run python scripts/evaluate_baselines.py                 # reference scores -> reports/data/baselines_holdout_v1.md
 ```
 
@@ -30,6 +36,21 @@ batch = collate_episodes([src.episode(i) for i in range(64)], pad_to_multiple=32
 # batch["target_future"] is a label: send it to the loss, never to model.forward
 
 val = FrozenEpisodeSet("data/holdouts/holdout_v1/val_id")   # refuses to load if hashes differ
+```
+
+PyTorch side (`src/tsfm/training/`): workers generate and collate whole batches;
+batch `k` always holds sample ids `[k*B, (k+1)*B)`, whatever `num_workers`.
+
+```python
+from tsfm.training import make_frozen_loader, make_train_loader, split_batch, to_torch
+
+loader = make_train_loader("configs/data_v1.yaml", batch_size=64, num_workers=8,
+                           start_batch=steps_done)                 # resume = skip batches
+for batch in loader:
+    inputs, labels = split_batch(to_torch(batch, device))         # labels: target_future, loss_mask
+    pred = model(**inputs)                                         # never sees labels
+
+val = make_frozen_loader("data/holdouts/holdout_v1/val_id", batch_size=64)
 ```
 
 Configs:

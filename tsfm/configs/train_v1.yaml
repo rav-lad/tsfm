@@ -1,0 +1,11 @@
+# Training distribution for model V1 (univariate, quantiles), round 2.
+# train_v0 + short histories: GIFT-Eval has contexts far below 128 points
+# (m4_yearly ~29, m4_weekly/daily short), never seen by V0/V1 round 1.
+# Horizons are unchanged: >192 needs a larger max_horizon (V2) and 384 is the
+# val_ood_horizon holdout.
+extends: train_v0.yaml
+overrides:
+  stage: model_v1_short_context
+  sequence:
+    context_lengths: {32: 0.10, 64: 0.10, 128: 0.15, 256: 0.20, 512: 0.30, 1024: 0.15}
+    min_history_observed: 16   # lets 32-point histories carry missingness too

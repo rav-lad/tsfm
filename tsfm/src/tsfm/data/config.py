@@ -13,8 +13,14 @@ import yaml
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
+    """Load a YAML config. ``{extends: base.yaml, overrides: {...}}`` is resolved
+    (recursively, relative to the file) into ``deep_merge(base, overrides)``."""
+    path = Path(path)
     with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+    if isinstance(cfg, dict) and "extends" in cfg:
+        cfg = deep_merge(load_config(path.parent / cfg["extends"]), cfg.get("overrides"))
+    return cfg
 
 
 def _is_distribution(d: Any) -> bool:

@@ -1,0 +1,7 @@
+# Training distribution for model V0 (univariate, point forecast).
+# Same priors and holdout exclusions as data_v1, without multivariate episodes:
+# V0 ignores covariates, so covariate-driven targets would only add noise.
+extends: data_v1.yaml
+overrides:
+  stage: model_v0_univariate
+  multivariate: {enabled: false}

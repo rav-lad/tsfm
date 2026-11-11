@@ -10,5 +10,5 @@ wheels/
 .venv
 
 # generated reports (regenerate with scripts/)
-reports/
-data/
+/reports/
+/data/

@@ -4,6 +4,7 @@
 #
 #   H1  same priors, new draws                        -> *_id
 #   H2  parameters outside the training support       -> *_ood_noise, *_ood_period, *_ood_horizon
+#       (val_short_context: outside V0/V1 support, inside train_v1.yaml)
 #   H3  operators / kinds absent from training        -> *_ood_kinds, *_ood_relation
 #
 # val_* : reusable during development.  test_syn_* : final reporting only.
@@ -49,6 +50,15 @@ suites:
       sequence:
         context_lengths: {512: 0.5, 1024: 0.5}
         horizons: {384: 1.0}
+
+  val_short_context:
+    split: val_ood/short_context
+    n: 1000
+    overrides:
+      multivariate: {probability: 0.0}
+      sequence:
+        context_lengths: {32: 0.5, 64: 0.5}
+        min_history_observed: 16
 
   # ---------------------------------------------------------------- H3
   val_ood_kinds:

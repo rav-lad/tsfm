@@ -12,3 +12,4 @@ wheels/
 # generated reports (regenerate with scripts/)
 /reports/
 /data/
+/runs/

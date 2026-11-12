@@ -4,6 +4,7 @@
     uv run python scripts/train.py --model v1 --run-dir runs/v1      # quantile model (pinball loss)
     uv run python scripts/train.py --total-episodes 20000 --run-dir runs/smoke
     uv run python scripts/train.py --run-dir runs/v0 --resume        # continue from last.pt
+    uv run python scripts/train.py --run-dir runs/v1 --stop-after-hours 11 [--resume]  # time-limited session
 
 Every TrainConfig field is a flag (``--batch-size``, ``--lr``, ``--val-suites val_id val_ood_noise`` ...).
 After training, all val_* suites are scored and written to <run_dir>/eval.json.
@@ -46,7 +47,9 @@ def main() -> None:
 
     trainer = Trainer(TrainConfig(**args), resume=resume)
     trainer.train()
-    if final_eval:
+    if trainer.step < trainer.total_steps:
+        print(f"session stopped at step {trainer.step}/{trainer.total_steps}; continue with --resume")
+    elif final_eval:
         root = Path(trainer.cfg.val_root)
         suites = sorted(p.name for p in root.iterdir() if p.name.startswith("val_") and (p / "manifest.json").exists())
         print("final evaluation (full suites):")

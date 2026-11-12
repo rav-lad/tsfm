@@ -57,6 +57,16 @@ def test_resume_is_exact(tmp_path):
         assert torch.equal(a, b), k
 
 
+def test_stop_after_hours_checkpoints_and_resumes(tmp_path):
+    first = Trainer(_cfg(tmp_path, stop_after_hours=0.0), TINY)
+    first.train()
+    assert first.step == 1
+    assert torch.load(tmp_path / "last.pt")["step"] == 1
+    second = Trainer(_cfg(tmp_path), TINY, resume=True)
+    second.train()
+    assert second.step == 6
+
+
 def test_evaluate_suite_reports_baselines(tmp_path):
     src = SyntheticEpisodeSource(load_config(CONFIG), split="val_id")
     write_suite(tmp_path / "suite", [src.episode(i) for i in range(20)], {"name": "test"})

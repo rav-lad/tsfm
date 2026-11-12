@@ -6,7 +6,8 @@
 - Data: infinite on-the-fly stream; ``step`` = batch index, so resuming is
   ``start_batch = step`` and reproduces the exact remaining stream.
 - AdamW (no weight decay on norms / biases), linear warmup + cosine decay,
-  gradient clipping, bf16 autocast on CUDA.
+  gradient clipping, autocast on CUDA (bf16, or fp16 + loss scaling on GPUs
+  without bf16 such as Kaggle's T4 / P100).
 - Logs (``metrics.jsonl``): loss, lr, grad norm, episodes/s and the fraction of
   wall time spent waiting for the DataLoader (the number that says whether
   on-the-fly generation is free).
@@ -47,12 +48,14 @@ class TrainConfig:
     grad_clip: float = 1.0
     num_workers: int = 8
     device: str = "auto"
-    amp: bool = True  # bf16 autocast, CUDA only
+    amp: bool = True  # autocast, CUDA only
+    amp_dtype: str = "auto"  # auto | bf16 | fp16 (auto: bf16 if the GPU supports it)
     seed: int = 0
     log_every: int = 50
     eval_every: int = 1000
     eval_max_batches: int | None = 20  # periodic eval on the first 20 x 64 episodes
     stop_after_steps: int | None = None  # end this session early (time-limited GPUs); resume later
+    stop_after_hours: float | None = None  # same, by wall time (checkpoint at the step it is reached)
     val_root: str = "data/holdouts/holdout_v1"
     val_suites: list[str] = field(default_factory=lambda: ["val_id"])
     best_metric_suite: str = "val_id"
@@ -62,6 +65,12 @@ def resolve_device(device: str) -> torch.device:
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(device)
+
+
+def resolve_amp_dtype(name: str) -> torch.dtype:
+    if name == "auto":
+        return torch.bfloat16 if torch.cuda.is_bf16_supported(including_emulation=False) else torch.float16
+    return {"bf16": torch.bfloat16, "fp16": torch.float16}[name]
 
 
 def load_model(checkpoint: str | Path, device: str | torch.device = "cpu") -> PatchTransformerV0:
@@ -107,6 +116,8 @@ class Trainer:
         self.sched = torch.optim.lr_scheduler.LambdaLR(
             self.opt, lambda s: lr_factor(s, cfg.warmup_steps, self.total_steps, cfg.min_lr_ratio)
         )
+        self.amp_dtype = resolve_amp_dtype(cfg.amp_dtype) if cfg.amp and self.device.type == "cuda" else None
+        self.scaler = torch.amp.GradScaler("cuda", enabled=self.amp_dtype is torch.float16)
         self.step = 0
         self.best = math.inf
         self.eval_cache: dict[str, Any] = {}
@@ -126,6 +137,7 @@ class Trainer:
             "n_parameters": self.model.num_parameters(),
             "total_steps": self.total_steps,
             "device": str(self.device),
+            "amp_dtype": str(self.amp_dtype),
             "torch": torch.__version__,
         }
         (self.run_dir / "run.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
@@ -140,6 +152,7 @@ class Trainer:
                 "model": self.model.state_dict(),
                 "optimizer": self.opt.state_dict(),
                 "scheduler": self.sched.state_dict(),
+                "scaler": self.scaler.state_dict(),
                 "step": self.step,
                 "best": self.best,
                 "model_config": asdict(self.model_cfg),
@@ -153,6 +166,8 @@ class Trainer:
         self.model.load_state_dict(ckpt["model"])
         self.opt.load_state_dict(ckpt["optimizer"])
         self.sched.load_state_dict(ckpt["scheduler"])
+        if ckpt.get("scaler") and self.scaler.is_enabled():
+            self.scaler.load_state_dict(ckpt["scaler"])
         self.step, self.best = ckpt["step"], ckpt["best"]
         print(f"resumed from {path} at step {self.step}")
 
@@ -193,12 +208,13 @@ class Trainer:
             return
         loader = make_train_loader(cfg.data_config, cfg.batch_size, cfg.num_workers,
                                    start_batch=self.step, num_batches=self.total_steps - self.step)
-        use_amp = cfg.amp and self.device.type == "cuda"
         stop_at = self.total_steps
         if cfg.stop_after_steps is not None:
             stop_at = min(stop_at, self.step + cfg.stop_after_steps)
+        deadline = time.time() + cfg.stop_after_hours * 3600 if cfg.stop_after_hours is not None else math.inf
         print(f"device {self.device} | {self.model.num_parameters():,} params | "
-              f"steps {self.step} -> {self.total_steps} | batch {cfg.batch_size} | workers {cfg.num_workers}")
+              f"steps {self.step} -> {self.total_steps} | batch {cfg.batch_size} | workers {cfg.num_workers} | "
+              f"amp {self.amp_dtype}")
 
         self.model.train()
         it = iter(loader)
@@ -211,16 +227,21 @@ class Trainer:
             win_wait += time.perf_counter() - t_wait
 
             inputs, labels = split_batch(to_torch(batch, self.device))
-            with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=use_amp):
+            with torch.autocast(self.device.type, dtype=self.amp_dtype or torch.bfloat16,
+                                enabled=self.amp_dtype is not None):
                 out = self.model(**inputs)
             loss = self.loss(out, labels)
             self.opt.zero_grad(set_to_none=True)
-            loss.backward()
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.opt)
             grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), cfg.grad_clip)
-            self.opt.step()
+            self.scaler.step(self.opt)  # skipped on inf/nan gradients when fp16 loss scaling is on
+            self.scaler.update()
             self.sched.step()
             self.step += 1
             win_steps += 1
+            if time.time() >= deadline:
+                stop_at = self.step  # the log / eval / checkpoint branches below fire on this step
             loss_sum += loss.detach()
             grad_sum += grad_norm.detach()
 

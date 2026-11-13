@@ -2,7 +2,7 @@
 
 Every sample is identified by ``(master_seed, split, sample_id)``. Its RNG never
 depends on worker ids, batch composition or iteration order, so changing
-``num_workers`` or the batch size does not change the data (reference §10.4).
+``num_workers`` or the batch size does not change the data.
 
 Each sample owns several independent *streams* so that, for example, changing the
 episode sampler (L, H, missingness) does not change the underlying source record.

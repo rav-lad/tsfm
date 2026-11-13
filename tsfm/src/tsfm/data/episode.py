@@ -1,6 +1,6 @@
 """Canonical data objects: source records and forecasting episodes.
 
-Vocabulary (reference §3):
+Vocabulary:
 - *record*  : aligned multivariate array produced by a generator, shape ``[T, C]``.
 - *episode* : what the network sees, shape ``[C, L + H]`` with roles and masks.
 

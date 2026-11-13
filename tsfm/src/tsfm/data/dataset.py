@@ -1,4 +1,4 @@
-"""On-the-fly synthetic episode source (reference §10.3).
+"""On-the-fly synthetic episode source.
 
 ``SyntheticEpisodeSource(config, split).episode(sample_id)`` is a pure function
 of ``(seed, split, sample_id, config[, progress])``: it can be called from any
@@ -6,7 +6,7 @@ worker in any order, and replayed from metadata alone.
 
 Pipeline per sample::
 
-    uni / multi <- FAMILY stream (curriculum probability, §15.3)
+    uni / multi <- FAMILY stream (curriculum probability)
     family      <- FAMILY stream
     L, H        <- EPISODE stream
     record      <- generator(RECORD stream, length = L + H + slack)
@@ -187,7 +187,7 @@ class SyntheticEpisodeSource:
 
 @dataclass
 class ExposureTracker:
-    """The three quantity metrics of reference §7.2 (plus a few extras)."""
+    """Quantity metrics of the episode stream."""
 
     n_source_draws: int = 0
     n_episodes_seen: int = 0

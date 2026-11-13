@@ -1,4 +1,4 @@
-"""Sprint D5 acceptance tests (reference §5, §16 D5).
+"""Sprint D5 acceptance tests.
 
 "Done when: useful relation measurable, decoy useless, no future leak, variable C."
 """
@@ -97,7 +97,7 @@ def test_useful_relations_measurable_and_decoys_useless(episodes):
 
 
 def test_known_future_permutation_destroys_lift(episodes):
-    """Shuffling a useful known-future driver in time must remove its lift (§5.4)."""
+    """Shuffling a useful known-future driver in time must remove its lift."""
     from tsfm.data.evaluation import covariate_lift
 
     rng = np.random.default_rng(1)

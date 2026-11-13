@@ -1,4 +1,4 @@
-"""PyTorch bridge for the numpy data pipeline (roadmap phase 3, reference §10.2).
+"""PyTorch bridge for the numpy data pipeline.
 
 Workers build whole *batches* (generate + collate) so that only a handful of
 numpy arrays cross the process boundary, not hundreds of ``Episode`` objects.

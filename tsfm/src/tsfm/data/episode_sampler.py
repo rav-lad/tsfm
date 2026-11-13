@@ -1,4 +1,4 @@
-"""Cut a forecasting episode out of a source record (reference §3.1, §8.3)."""
+"""Cut a forecasting episode out of a source record."""
 
 from __future__ import annotations
 

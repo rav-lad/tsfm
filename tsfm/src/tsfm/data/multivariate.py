@@ -1,4 +1,4 @@
-"""Multivariate relational generator (reference §5, sprint D5).
+"""Multivariate relational generator.
 
 Two levels, as in Timer-M1 / t0:
 1. *temporal primitives*: independent univariate sources from the G* families;
@@ -8,13 +8,13 @@ Construction of one record with ``C`` channels:
 
 - ``n_targets`` TARGET channels, the rest are covariates;
 - each covariate is KNOWN_FUTURE (calendar / planned event / scheduled promo —
-  information genuinely known at the cutoff, §5.3) or PAST_ONLY (any source);
+  information genuinely known at the cutoff) or PAST_ONLY (any source);
 - a fraction of covariates are *decoys* (R8): no edge to any target;
 - every target gets a covariate *strength*: ``null`` (no parent), ``weak`` or
-  ``strong``, so each batch mixes useful, weak and useless relations (§5.4);
+  ``strong``, so each batch mixes useful, weak and useless relations;
 - target = own univariate baseline + scaled sum of relational effects + noise.
 
-Relational operators (codes of reference §5.2):
+Relational operators (codes R1–R8):
 
     R1 signed_mix       a * z_t
     R2 lag              a * z_{t - tau}
@@ -26,7 +26,7 @@ Relational operators (codes of reference §5.2):
     R8 decoy            covariate independent of every target
 
 Targets may also depend on *earlier* targets with a strictly positive lag, so
-the graph stays acyclic in computation order (§5.2). Lags are applied on an
+the graph stays acyclic in computation order. Lags are applied on an
 extended series and cropped, so the record has no undefined start.
 """
 
@@ -61,7 +61,7 @@ def _shift(z: np.ndarray, tau: int) -> np.ndarray:
 
 
 def known_future_signal(rng: np.random.Generator, n: int, context_length: int, kind: str) -> tuple[np.ndarray, dict]:
-    """Information genuinely known in advance (§5.3): calendars and plans."""
+    """Information genuinely known in advance: calendars and plans."""
     t = np.arange(n)
     if kind == "calendar":
         # categorical calendar effect (e.g. day-of-week) encoded numerically,

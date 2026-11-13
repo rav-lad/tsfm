@@ -1,4 +1,4 @@
-"""Reference scores of simple baselines on frozen suites (reference §12.3, §13.1).
+"""Reference scores of simple baselines on frozen suites.
 
 These numbers are the bar any trained model must clear, per suite and family.
 For multivariate suites it also reports the relational diagnostics

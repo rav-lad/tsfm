@@ -1,4 +1,4 @@
-"""Frozen, immutable episode suites (reference §10.5, §11.1, sprint D4).
+"""Frozen, immutable episode suites.
 
 Layout of one suite directory::
 

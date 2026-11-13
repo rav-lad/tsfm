@@ -1,4 +1,4 @@
-"""Sprint D1 acceptance tests (reference §11.3, §16 D1).
+"""Sprint D1 acceptance tests.
 
 "Done when: future-invariance test + replay test + observed-zero vs missing pass."
 """

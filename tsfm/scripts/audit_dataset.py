@@ -1,4 +1,4 @@
-"""Distribution and difficulty audit of the episode mix (reference §12.2–12.3).
+"""Distribution and difficulty audit of the episode mix.
 
 For N episodes, reports per family/kind: counts, augmentation and missingness
 rates, scale fallbacks, lag-1 ACF, zero-rate, and the normalized MAE of simple

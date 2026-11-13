@@ -1,4 +1,4 @@
-"""Leak-free per-channel normalization (reference §9.3).
+"""Leak-free per-channel normalization.
 
 Statistics are computed on the *visible history only*. Future labels are scaled
 with the past statistics for the loss, but never contribute to them.

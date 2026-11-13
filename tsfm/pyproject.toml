@@ -1,8 +1,8 @@
 [project]
 name = "tsfm"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "A small time-series foundation model trained only on synthetic data"
+license = "MIT"
 authors = [
     { email = "arno.vfn@gmail.com" }
 ]

@@ -1,4 +1,4 @@
-"""G6 — events, spikes, intermittency and counts (reference §4 G6).
+"""G6 — events, spikes, intermittency and counts.
 
 Kinds:
 - intermittent_demand : zero-inflated Poisson / negative-binomial (integer >= 0)

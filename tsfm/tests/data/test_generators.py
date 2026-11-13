@@ -1,4 +1,4 @@
-"""Sprint D2 generator unit tests (reference §12.1)."""
+"""Sprint D2 generator unit tests."""
 
 from __future__ import annotations
 

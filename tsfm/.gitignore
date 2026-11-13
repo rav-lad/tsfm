@@ -14,3 +14,4 @@ wheels/
 /data/
 /runs/
 .venv-rocm
+.pytest_cache/

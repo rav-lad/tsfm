@@ -1,6 +1,6 @@
-"""Contract checks for records and episodes (reference §12.1, §12.4).
+"""Contract checks for records and episodes.
 
-Rejection policy (§9.4): only *implementation* anomalies are errors (NaN/Inf,
+Rejection policy: only *implementation* anomalies are errors (NaN/Inf,
 overflow, shape/mask violations, support violations). Hard or noisy series are
 legitimate and never rejected here.
 """

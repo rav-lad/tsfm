@@ -1,4 +1,4 @@
-"""G7 — non-linear compositions of other families (reference §4 G7, §6.4).
+"""G7 — non-linear compositions of other families.
 
     y_t = T(t) + A(t) S(t) + R(t) + eps_t, then optional transforms
 
@@ -15,7 +15,7 @@ followed by 0–2 transforms: saturation (tanh), soft-clip, softplus (positive
 support), signed power, local clipping (sensor saturation on a window).
 
 Metadata keeps the *dominant* family (first component) and the secondary ones,
-so ablations can still attribute results (§6.4).
+so ablations can still attribute results.
 """
 
 from __future__ import annotations
@@ -133,7 +133,7 @@ class CompositeGenerator(Generator):
                 support = Support.REAL  # later transforms may break positivity
 
         # Components already carry their own noise: extra noise only sometimes,
-        # otherwise compositions drift toward pure noise (QA rule of §4 G7).
+        # otherwise compositions drift toward pure noise.
         ninfo, level = {"noise_regime": "none"}, 0.0
         if support == Support.REAL:
             if rng.random() < 0.3 or self.noise_regimes:

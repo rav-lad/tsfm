@@ -1,4 +1,4 @@
-"""Observation masks: role-based visibility and history missingness (reference §9.2).
+"""Observation masks: role-based visibility and history missingness.
 
 Four cases are kept distinct:
 1. observed zero      -> value 0, observed_mask 1

@@ -1,5 +1,5 @@
 # Data config V1 — training distribution for the pilot (D4 holdouts + D5 multivariate).
-# Everything that is held out for val_ood is *excluded here* (reference §11.2).
+# Everything that is held out for val_ood is *excluded here*.
 # All numbers are starting hypotheses to ablate.
 schema_version: 1
 seed: 20261107
@@ -62,7 +62,7 @@ multivariate:
   known_future_kinds: {calendar: 0.4, planned_event: 0.35, scheduled_promotion: 0.25}
 
 curriculum:
-  # fraction of multivariate episodes over training progress (t0-alpha-inspired, §15.3)
+  # fraction of multivariate episodes over training progress (t0-alpha-inspired)
   total_episodes: 500000
   milestones:
     - {progress: 0.0, multivariate_probability: 0.10}

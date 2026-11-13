@@ -1,4 +1,4 @@
-"""G3 — Gaussian processes with composed kernels (KernelSynth-style, reference §4 G3).
+"""G3 — Gaussian processes with composed kernels (KernelSynth-style).
 
 A random kernel expression is built from a bank (RBF, Matérn, Periodic,
 RationalQuadratic, Linear, White) by combining 1..max_kernels kernels with

@@ -2,8 +2,8 @@
 
 A generator maps ``(rng, length, context_length)`` to a :class:`SyntheticRecord`.
 ``context_length`` is a hint so that dimensionless quantities (period / L, number
-of visible cycles) can be sampled relative to what the model will actually see
-(reference §6.2). Generators must never look at anything else.
+of visible cycles) can be sampled relative to what the model will actually see.
+Generators must never look at anything else.
 
 Every record's metadata contains at least::
 
@@ -28,7 +28,7 @@ SNR_REGIMES = {"low_noise": 0.05, "mid_noise": 0.3, "high_noise": 1.0, "extreme_
 class Generator(ABC):
     """Base class.
 
-    Shared *prior* parameters (used by holdouts, reference §11.2 H2):
+    Shared *prior* parameters (used by holdouts):
     - ``period_ratio_band``: ``[lo, hi]`` band of P / L
     - ``period_band_mode``: ``"exclude"`` (train) or ``"only"`` (OOD suite)
     - ``noise_regimes``: distribution over SNR regimes overriding the defaults

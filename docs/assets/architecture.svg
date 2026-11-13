@@ -1,0 +1,392 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" width="960" height="660" role="img" aria-labelledby="t d">
+<title id="t">TSFM PatchTransformer V1 architecture</title>
+<desc id="d">A univariate history is normalized and cut into 32-step patches (values plus observation mask), embedded to 192 dimensions, passed through 8 bidirectional pre-norm Transformer blocks, and the last patch token is decoded into 192 future steps times 9 quantiles.</desc>
+<style>
+svg{--bg:#F5F7FA;--panel:#FFFFFF;--ink:#17202C;--muted:#5A6576;--rule:#D2D9E3;--hist:#245A9C;--fc:#C25E14;
+--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+--mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,Menlo,monospace}
+@media (prefers-color-scheme:dark){svg{--bg:#0D1219;--panel:#141B25;--ink:#E5EAF1;--muted:#93A0B3;--rule:#2A3443;--hist:#7AAAE6;--fc:#F09A4A}}
+.bg{fill:var(--bg)}
+text{fill:var(--ink);font-family:var(--sans)}
+.title{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12.5px;fill:var(--muted)}
+.lbl{font-size:13px;font-weight:600}
+.cap{font-size:11.5px;fill:var(--muted);font-family:var(--mono)}
+.mono{font-size:11.5px;fill:var(--muted);font-family:var(--mono)}
+.tiny{font-size:10.5px;fill:var(--muted);font-family:var(--mono)}
+.fc{fill:var(--fc)}
+.foot{font-size:11.5px;fill:var(--muted)}
+.subs{font-size:8.5px;fill:var(--muted)}
+.times{font-size:15px;font-weight:700;fill:var(--muted);font-family:var(--mono)}
+.pilltxt{font-size:10.5px;font-family:var(--mono)}
+.grid{stroke:var(--rule);stroke-width:1;stroke-dasharray:2 3}
+.axis{stroke:var(--ink);stroke-width:1;opacity:.5}
+.origin{stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 3}
+.hist{fill:none;stroke:var(--hist);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.band{fill:var(--fc);fill-opacity:.16}
+.med{fill:none;stroke:var(--fc);stroke-width:2;stroke-linecap:round}
+.loop{fill:none;stroke:var(--fc);stroke-width:1.3}
+.conn{fill:none;stroke:var(--muted);stroke-width:1.2}
+.fcs{stroke:var(--fc)}
+.chipv{fill:var(--hist);fill-opacity:.12;stroke:var(--hist);stroke-opacity:.5;stroke-width:1}
+.mini{fill:none;stroke:var(--hist);stroke-width:1.2}
+.mask1{fill:var(--ink);fill-opacity:.75}
+.mask0{fill:none;stroke:var(--muted);stroke-width:1}
+.vecc{fill:var(--hist)}
+.block{fill:var(--panel);stroke:var(--rule);stroke-width:1.2}
+.pill{fill:var(--bg);stroke:var(--rule);stroke-width:1}
+.stream{stroke:var(--rule);stroke-width:1.5}
+.attn-bg{fill:none;stroke:var(--muted);stroke-opacity:.35;stroke-width:1}
+.attn{fill:none;stroke:var(--hist);stroke-width:1.5;stroke-opacity:.85}
+.tok{fill:var(--panel);stroke:var(--hist);stroke-width:2}
+.ring{fill:none;stroke:var(--fc);stroke-width:2.2}
+.pip{fill:none;stroke:var(--rule);stroke-width:1.2}
+.pipon{fill:var(--hist)}
+.head{fill:var(--panel);stroke:var(--rule);stroke-width:1.2}
+.headon{fill:none;stroke:var(--fc);stroke-width:2}
+.sig{fill:none;stroke:var(--fc);stroke-width:3.5;stroke-linecap:round;opacity:0}
+.hatch{stroke:var(--muted);stroke-opacity:.45;stroke-width:1}
+.gap{animation:gap 12.0s linear infinite}@keyframes gap{0%,8.33%{opacity:0;transform:translateY(-5px)}11.67%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.histline{stroke-dasharray:1;animation:histline 12.0s linear infinite}@keyframes histline{0%,1.67%{stroke-dashoffset:1;opacity:1}13.33%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.fan{transform-origin:520px 170px;animation:fan 12.0s linear infinite}@keyframes fan{0%,69.17%{transform:scaleX(0)}80.00%,93.33%{transform:scaleX(1);opacity:1}97.50%,100%{transform:scaleX(1);opacity:0}}
+.median{stroke-dasharray:1;animation:median 12.0s linear infinite}@keyframes median{0%,69.17%{stroke-dashoffset:1;opacity:1}80.00%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.rollout{animation:rollout 12.0s linear infinite}@keyframes rollout{0%,81.67%{opacity:0;transform:translateY(-5px)}85.83%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip0{animation:chip0 12.0s linear infinite}@keyframes chip0{0%,15.00%{opacity:0;transform:translateY(-5px)}17.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip1{animation:chip1 12.0s linear infinite}@keyframes chip1{0%,16.00%{opacity:0;transform:translateY(-5px)}18.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip2{animation:chip2 12.0s linear infinite}@keyframes chip2{0%,17.00%{opacity:0;transform:translateY(-5px)}19.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip3{animation:chip3 12.0s linear infinite}@keyframes chip3{0%,18.00%{opacity:0;transform:translateY(-5px)}20.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip4{animation:chip4 12.0s linear infinite}@keyframes chip4{0%,19.00%{opacity:0;transform:translateY(-5px)}21.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip5{animation:chip5 12.0s linear infinite}@keyframes chip5{0%,20.00%{opacity:0;transform:translateY(-5px)}22.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip6{animation:chip6 12.0s linear infinite}@keyframes chip6{0%,21.00%{opacity:0;transform:translateY(-5px)}23.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.chip7{animation:chip7 12.0s linear infinite}@keyframes chip7{0%,22.00%{opacity:0;transform:translateY(-5px)}24.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec0{animation:vec0 12.0s linear infinite}@keyframes vec0{0%,24.17%{opacity:0;transform:translateY(-5px)}27.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec1{animation:vec1 12.0s linear infinite}@keyframes vec1{0%,25.00%{opacity:0;transform:translateY(-5px)}27.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec2{animation:vec2 12.0s linear infinite}@keyframes vec2{0%,25.83%{opacity:0;transform:translateY(-5px)}28.75%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec3{animation:vec3 12.0s linear infinite}@keyframes vec3{0%,26.67%{opacity:0;transform:translateY(-5px)}29.58%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec4{animation:vec4 12.0s linear infinite}@keyframes vec4{0%,27.50%{opacity:0;transform:translateY(-5px)}30.42%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec5{animation:vec5 12.0s linear infinite}@keyframes vec5{0%,28.33%{opacity:0;transform:translateY(-5px)}31.25%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec6{animation:vec6 12.0s linear infinite}@keyframes vec6{0%,29.17%{opacity:0;transform:translateY(-5px)}32.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.vec7{animation:vec7 12.0s linear infinite}@keyframes vec7{0%,30.00%{opacity:0;transform:translateY(-5px)}32.92%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.arc0{stroke-dasharray:1;animation:arc0 12.0s linear infinite}@keyframes arc0{0%,36.67%{stroke-dashoffset:1;opacity:1}41.67%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc1{stroke-dasharray:1;animation:arc1 12.0s linear infinite}@keyframes arc1{0%,37.92%{stroke-dashoffset:1;opacity:1}42.92%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc2{stroke-dasharray:1;animation:arc2 12.0s linear infinite}@keyframes arc2{0%,39.17%{stroke-dashoffset:1;opacity:1}44.17%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc3{stroke-dasharray:1;animation:arc3 12.0s linear infinite}@keyframes arc3{0%,40.42%{stroke-dashoffset:1;opacity:1}45.42%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc4{stroke-dasharray:1;animation:arc4 12.0s linear infinite}@keyframes arc4{0%,41.67%{stroke-dashoffset:1;opacity:1}46.67%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc5{stroke-dasharray:1;animation:arc5 12.0s linear infinite}@keyframes arc5{0%,42.92%{stroke-dashoffset:1;opacity:1}47.92%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.arc6{stroke-dasharray:1;animation:arc6 12.0s linear infinite}@keyframes arc6{0%,44.17%{stroke-dashoffset:1;opacity:1}49.17%,93.33%{stroke-dashoffset:0;opacity:1}97.50%,100%{stroke-dashoffset:0;opacity:0}}
+.tok0{animation:tok0 12.0s linear infinite}@keyframes tok0{0%,32.50%{opacity:0;transform:translateY(-5px)}35.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok1{animation:tok1 12.0s linear infinite}@keyframes tok1{0%,33.00%{opacity:0;transform:translateY(-5px)}35.50%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok2{animation:tok2 12.0s linear infinite}@keyframes tok2{0%,33.50%{opacity:0;transform:translateY(-5px)}36.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok3{animation:tok3 12.0s linear infinite}@keyframes tok3{0%,34.00%{opacity:0;transform:translateY(-5px)}36.50%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok4{animation:tok4 12.0s linear infinite}@keyframes tok4{0%,34.50%{opacity:0;transform:translateY(-5px)}37.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok5{animation:tok5 12.0s linear infinite}@keyframes tok5{0%,35.00%{opacity:0;transform:translateY(-5px)}37.50%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok6{animation:tok6 12.0s linear infinite}@keyframes tok6{0%,35.50%{opacity:0;transform:translateY(-5px)}38.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.tok7{animation:tok7 12.0s linear infinite}@keyframes tok7{0%,36.00%{opacity:0;transform:translateY(-5px)}38.50%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.ring{animation:ring 12.0s linear infinite}@keyframes ring{0%,57.50%{opacity:0;transform:translateY(-5px)}60.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip0{animation:pip0 12.0s linear infinite}@keyframes pip0{0%,38.33%{opacity:0;transform:translateY(-5px)}39.58%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip1{animation:pip1 12.0s linear infinite}@keyframes pip1{0%,40.83%{opacity:0;transform:translateY(-5px)}42.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip2{animation:pip2 12.0s linear infinite}@keyframes pip2{0%,43.33%{opacity:0;transform:translateY(-5px)}44.58%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip3{animation:pip3 12.0s linear infinite}@keyframes pip3{0%,45.83%{opacity:0;transform:translateY(-5px)}47.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip4{animation:pip4 12.0s linear infinite}@keyframes pip4{0%,48.33%{opacity:0;transform:translateY(-5px)}49.58%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip5{animation:pip5 12.0s linear infinite}@keyframes pip5{0%,50.83%{opacity:0;transform:translateY(-5px)}52.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip6{animation:pip6 12.0s linear infinite}@keyframes pip6{0%,53.33%{opacity:0;transform:translateY(-5px)}54.58%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.pip7{animation:pip7 12.0s linear infinite}@keyframes pip7{0%,55.83%{opacity:0;transform:translateY(-5px)}57.08%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.sig1{stroke-dasharray:0.12 1.2;animation:sig1 12.0s linear infinite}@keyframes sig1{0%,58.33%{stroke-dashoffset:0.12;opacity:0}58.42%{opacity:1}63.33%{stroke-dashoffset:-1;opacity:1}63.42%,100%{stroke-dashoffset:-1;opacity:0}}
+.headon{animation:headon 12.0s linear infinite}@keyframes headon{0%,62.50%{opacity:0;transform:translateY(-5px)}65.00%,93.33%{opacity:1;transform:none}97.50%,100%{opacity:0;transform:none}}
+.sig2{stroke-dasharray:0.12 1.2;animation:sig2 12.0s linear infinite}@keyframes sig2{0%,65.00%{stroke-dashoffset:0.12;opacity:0}65.08%{opacity:1}70.00%{stroke-dashoffset:-1;opacity:1}70.08%,100%{stroke-dashoffset:-1;opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.sig{opacity:0}}
+</style>
+<defs>
+<marker id="ahead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 Z" style="fill:var(--muted)"/></marker>
+<marker id="ahead-fc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 Z" style="fill:var(--fc)"/></marker>
+<pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" class="hatch"/></pattern>
+</defs>
+<rect width="960" height="660" rx="14" class="bg"/>
+<text x="40" y="46" class="title" text-anchor="start">PatchTransformer V1</text>
+<text x="40" y="66" class="sub" text-anchor="start">6.6M parameters · trained on synthetic data only · zero-shot forecaster</text>
+<line x1="100" y1="116" x2="100" y2="226" class="grid"/>
+<line x1="160" y1="116" x2="160" y2="226" class="grid"/>
+<line x1="220" y1="116" x2="220" y2="226" class="grid"/>
+<line x1="280" y1="116" x2="280" y2="226" class="grid"/>
+<line x1="340" y1="116" x2="340" y2="226" class="grid"/>
+<line x1="400" y1="116" x2="400" y2="226" class="grid"/>
+<line x1="460" y1="116" x2="460" y2="226" class="grid"/>
+<rect x="296" y="116" width="28" height="110" fill="url(#hatch)" class="gap"/>
+<text x="310.0" y="110" class="tiny" text-anchor="middle">missing</text>
+<line x1="40" y1="226" x2="880" y2="226" class="axis"/>
+<line x1="520" y1="104" x2="520" y2="226" class="origin"/>
+<text x="526" y="240" class="tiny" text-anchor="start">forecast origin</text>
+<text x="44" y="128" class="cap" text-anchor="start">history · up to 1024 steps</text>
+<text x="530" y="128" class="cap fc" text-anchor="start">forecast · 192 steps × 9 quantiles</text>
+<path d="M40,173.6 L44,179.4 L48,179.7 L52,179.7 L56,177.7 L60,178.8 L64,182.2 L68,182.4 L72,186.3 L76,186.9 L80,188.1 L84,186.4 L88,178.6 L92,178.6 L96,171.5 L100,165.7 L104,156.7 L108,154.4 L112,155.9 L116,157.4 L120,159.4 L124,158.0 L128,157.3 L132,152.1 L136,151.7 L140,150.8 L144,149.6 L148,158.3 L152,161.2 L156,168.8 L160,170.4 L164,174.2 L168,177.1 L172,177.8 L176,178.7 L180,177.4 L184,176.4 L188,177.0 L192,180.5 L196,186.6 L200,183.1 L204,184.1 L208,180.9 L212,171.1 L216,168.1 L220,165.1 L224,153.6 L228,155.2 L232,155.3 L236,154.2 L240,157.4 L244,155.6 L248,150.6 L252,152.9 L256,150.1 L260,149.6 L264,151.8 L268,153.0 L272,157.8 L276,160.9 L280,170.8 L284,172.1 L288,174.4 L292,172.9 L296,172.8 M324,182.5 L328,173.3 L332,166.4 L336,166.4 L340,158.2 L344,153.1 L348,155.6 L352,155.5 L356,154.0 L360,154.5 L364,154.3 L368,154.9 L372,150.1 L376,147.4 L380,146.3 L384,142.8 L388,152.6 L392,157.3 L396,162.5 L400,162.7 L404,169.6 L408,174.9 L412,169.2 L416,172.1 L420,174.3 L424,169.7 L428,177.8 L432,178.0 L436,178.8 L440,180.8 L444,180.2 L448,175.4 L452,172.1 L456,161.7 L460,156.5 L464,155.5 L468,151.1 L472,148.7 L476,153.3 L480,154.8 L484,149.9 L488,146.0 L492,146.0 L496,143.5 L500,142.1 L504,146.9 L508,145.1 L512,155.6 L516,156.2 L520,162.9" pathLength="1" class="hist histline"/>
+<g class="fan">
+<path d="M520,161.4 L524,165.3 L528,167.1 L532,167.1 L536,166.2 L540,165.5 L544,165.9 L548,167.4 L552,169.8 L556,171.9 L560,172.7 L564,171.2 L568,167.4 L572,161.6 L576,155.1 L580,149.1 L584,144.7 L588,142.4 L592,141.9 L596,142.2 L600,142.4 L604,141.5 L608,139.4 L612,136.6 L616,133.9 L620,132.6 L624,133.6 L628,136.9 L632,142.2 L636,148.2 L640,153.6 L644,157.5 L648,159.3 L652,159.3 L656,158.4 L660,157.8 L664,158.1 L668,159.6 L672,162.0 L676,164.1 L680,164.9 L684,163.4 L688,159.6 L692,153.8 L696,147.3 L700,141.3 L704,136.9 L708,134.6 L712,134.1 L716,134.4 L720,134.6 L724,133.7 L728,131.7 L732,128.8 L736,126.2 L740,124.9 L744,125.8 L748,129.1 L752,134.4 L756,140.4 L760,145.8 L764,149.7 L768,151.5 L772,151.5 L776,150.7 L780,150.0 L784,150.3 L788,151.9 L792,154.2 L796,156.3 L800,157.1 L804,155.7 L808,151.8 L812,146.0 L816,139.5 L820,133.5 L824,129.2 L828,126.8 L832,126.3 L836,126.6 L840,126.8 L844,126.0 L848,123.9 L852,121.0 L856,118.4 L860,117.1 L864,118.0 L868,121.4 L872,126.6 L876,132.6 L880,138.1 L880,176.8 L876,170.9 L872,164.6 L868,159.0 L864,155.3 L860,154.0 L856,154.9 L852,157.2 L848,159.7 L844,161.4 L840,161.9 L836,161.4 L832,160.7 L828,160.9 L824,162.8 L820,166.9 L816,172.5 L812,178.6 L808,184.0 L804,187.5 L800,188.6 L796,187.5 L792,185.0 L788,182.3 L784,180.4 L780,179.7 L776,180.0 L772,180.5 L768,180.1 L764,178.0 L760,173.8 L756,168.0 L752,161.6 L748,156.0 L744,152.3 L740,151.0 L736,151.9 L732,154.2 L728,156.7 L724,158.4 L720,158.9 L716,158.4 L712,157.7 L708,157.9 L704,159.9 L700,163.9 L696,169.5 L692,175.7 L688,181.1 L684,184.6 L680,185.6 L676,184.5 L672,182.0 L668,179.3 L664,177.4 L660,176.7 L656,177.1 L652,177.6 L648,177.2 L644,175.0 L640,170.8 L636,165.0 L632,158.6 L628,153.0 L624,149.3 L620,148.0 L616,149.0 L612,151.2 L608,153.7 L604,155.5 L600,155.9 L596,155.4 L592,154.7 L588,154.9 L584,156.9 L580,160.9 L576,166.5 L572,172.7 L568,178.1 L564,181.6 L560,182.7 L556,181.5 L552,179.0 L548,176.3 L544,174.4 L540,173.8 L536,174.1 L532,174.6 L528,174.2 L524,172.0 L520,167.8 Z" class="band"/>
+<path d="M520,162.5 L524,166.4 L528,168.3 L532,168.4 L536,167.6 L540,167.0 L544,167.3 L548,169.0 L552,171.4 L556,173.5 L560,174.4 L564,173.0 L568,169.2 L572,163.5 L576,157.0 L580,151.1 L584,146.8 L588,144.6 L592,144.1 L596,144.5 L600,144.7 L604,143.9 L608,141.9 L612,139.1 L616,136.5 L620,135.3 L624,136.3 L628,139.7 L632,145.0 L636,151.0 L640,156.6 L644,160.5 L648,162.3 L652,162.4 L656,161.6 L660,161.0 L664,161.4 L668,163.0 L672,165.4 L676,167.6 L680,168.4 L684,167.1 L688,163.3 L692,157.6 L696,151.1 L700,145.2 L704,140.9 L708,138.6 L712,138.1 L716,138.5 L720,138.8 L724,138.0 L728,136.0 L732,133.2 L736,130.6 L740,129.4 L744,130.3 L748,133.7 L752,139.0 L756,145.1 L760,150.6 L764,154.5 L768,156.4 L772,156.5 L776,155.7 L780,155.1 L784,155.5 L788,157.1 L792,159.5 L796,161.7 L800,162.5 L804,161.1 L808,157.3 L812,151.6 L816,145.2 L820,139.3 L824,134.9 L828,132.7 L832,132.2 L836,132.6 L840,132.8 L844,132.0 L848,130.0 L852,127.2 L856,124.6 L860,123.4 L864,124.4 L868,127.8 L872,133.1 L876,139.2 L880,144.7 L880,170.1 L876,164.4 L872,158.1 L868,152.5 L864,148.9 L860,147.7 L856,148.6 L852,151.0 L848,153.6 L844,155.3 L840,155.9 L836,155.4 L832,154.8 L828,155.0 L824,157.1 L820,161.1 L816,166.8 L812,173.0 L808,178.5 L804,182.1 L800,183.2 L796,182.1 L792,179.7 L788,177.1 L784,175.2 L780,174.6 L776,175.0 L772,175.6 L768,175.2 L764,173.1 L760,169.0 L756,163.2 L752,156.9 L748,151.4 L744,147.7 L740,146.5 L736,147.5 L732,149.9 L728,152.4 L724,154.2 L720,154.7 L716,154.3 L712,153.6 L708,153.9 L704,155.9 L700,160.0 L696,165.7 L692,171.9 L688,177.4 L684,180.9 L680,182.1 L676,181.0 L672,178.6 L668,175.9 L664,174.1 L660,173.5 L656,173.9 L652,174.4 L648,174.1 L644,172.0 L640,167.8 L636,162.1 L632,155.8 L628,150.3 L624,146.6 L620,145.4 L616,146.4 L612,148.7 L608,151.3 L604,153.1 L600,153.6 L596,153.1 L592,152.5 L588,152.8 L584,154.8 L580,158.9 L576,164.5 L572,170.8 L568,176.2 L564,179.8 L560,180.9 L556,179.9 L552,177.4 L548,174.8 L544,173.0 L540,172.3 L536,172.7 L532,173.3 L528,173.0 L524,170.9 L520,166.7 Z" class="band"/>
+<path d="M520,163.3 L524,167.3 L528,169.2 L532,169.3 L536,168.5 L540,168.0 L544,168.4 L548,170.1 L552,172.5 L556,174.7 L560,175.6 L564,174.3 L568,170.5 L572,164.9 L576,158.5 L580,152.6 L584,148.3 L588,146.1 L592,145.7 L596,146.1 L600,146.4 L604,145.6 L608,143.7 L612,140.9 L616,138.4 L620,137.2 L624,138.2 L628,141.7 L632,147.0 L636,153.1 L640,158.7 L644,162.7 L648,164.6 L652,164.7 L656,163.9 L660,163.4 L664,163.8 L668,165.5 L672,167.9 L676,170.1 L680,171.0 L684,169.7 L688,165.9 L692,160.3 L696,153.8 L700,148.0 L704,143.7 L708,141.5 L712,141.1 L716,141.5 L720,141.8 L724,141.0 L728,139.1 L732,136.3 L736,133.8 L740,132.6 L744,133.6 L748,137.1 L752,142.4 L756,148.5 L760,154.1 L764,158.0 L768,160.0 L772,160.1 L776,159.3 L780,158.8 L784,159.2 L788,160.9 L792,163.3 L796,165.5 L800,166.4 L804,165.1 L808,161.3 L812,155.7 L816,149.2 L820,143.4 L824,139.1 L828,136.9 L832,136.4 L836,136.9 L840,137.2 L844,136.4 L848,134.5 L852,131.7 L856,129.2 L860,128.0 L864,129.0 L868,132.5 L872,137.8 L876,143.9 L880,149.5 L880,165.3 L876,159.6 L872,153.4 L868,147.9 L864,144.3 L860,143.1 L856,144.1 L852,146.5 L848,149.1 L844,151.0 L840,151.5 L836,151.1 L832,150.5 L828,150.8 L824,152.9 L820,157.0 L816,162.7 L812,169.0 L808,174.5 L804,178.1 L800,179.3 L796,178.3 L792,175.9 L788,173.3 L784,171.5 L780,170.9 L776,171.4 L772,172.0 L768,171.7 L764,169.6 L760,165.5 L756,159.8 L752,153.6 L748,148.1 L744,144.5 L740,143.3 L736,144.3 L732,146.7 L728,149.3 L724,151.2 L720,151.7 L716,151.3 L712,150.7 L708,151.0 L704,153.1 L700,157.2 L696,162.9 L692,169.2 L688,174.7 L684,178.3 L680,179.5 L676,178.5 L672,176.1 L668,173.5 L664,171.7 L660,171.1 L656,171.6 L652,172.2 L648,171.9 L644,169.8 L640,165.7 L636,160.0 L632,153.7 L628,148.3 L624,144.7 L620,143.5 L616,144.5 L612,146.9 L608,149.5 L604,151.3 L600,151.9 L596,151.5 L592,150.9 L588,151.2 L584,153.3 L580,157.4 L576,163.1 L572,169.4 L568,174.9 L564,178.5 L560,179.7 L556,178.7 L552,176.3 L548,173.7 L544,171.9 L540,171.3 L536,171.8 L532,172.4 L528,172.1 L524,170.0 L520,165.9 Z" class="band"/>
+<path d="M520,164.0 L524,168.0 L528,169.9 L532,170.1 L536,169.4 L540,168.8 L544,169.3 L548,171.0 L552,173.5 L556,175.8 L560,176.7 L564,175.4 L568,171.7 L572,166.0 L576,159.7 L580,153.8 L584,149.6 L588,147.4 L592,147.0 L596,147.5 L600,147.8 L604,147.1 L608,145.2 L612,142.5 L616,140.0 L620,138.8 L624,139.9 L628,143.4 L632,148.8 L636,154.9 L640,160.5 L644,164.5 L648,166.4 L652,166.6 L656,165.9 L660,165.4 L664,165.8 L668,167.5 L672,170.0 L676,172.3 L680,173.2 L684,171.9 L688,168.2 L692,162.6 L696,156.2 L700,150.4 L704,146.1 L708,144.0 L712,143.6 L716,144.0 L720,144.3 L724,143.7 L728,141.7 L732,139.0 L736,136.5 L740,135.4 L744,136.4 L748,139.9 L752,145.3 L756,151.4 L760,157.0 L764,161.0 L768,163.0 L772,163.2 L776,162.5 L780,161.9 L784,162.4 L788,164.1 L792,166.6 L796,168.8 L800,169.7 L804,168.5 L808,164.7 L812,159.1 L816,152.7 L820,146.9 L824,142.7 L828,140.5 L832,140.1 L836,140.6 L840,140.9 L844,140.2 L848,138.3 L852,135.5 L856,133.0 L860,131.9 L864,133.0 L868,136.4 L872,141.8 L876,148.0 L880,153.6 L880,161.2 L876,155.6 L872,149.3 L868,143.9 L864,140.3 L860,139.2 L856,140.3 L852,142.7 L848,145.3 L844,147.2 L840,147.8 L836,147.4 L832,146.9 L828,147.2 L824,149.3 L820,153.5 L816,159.2 L812,165.6 L808,171.1 L804,174.8 L800,176.0 L796,175.0 L792,172.6 L788,170.1 L784,168.3 L780,167.8 L776,168.3 L772,168.9 L768,168.6 L764,166.6 L760,162.6 L756,156.9 L752,150.7 L748,145.2 L744,141.7 L740,140.5 L736,141.6 L732,144.0 L728,146.7 L724,148.5 L720,149.2 L716,148.8 L712,148.2 L708,148.6 L704,150.7 L700,154.8 L696,160.6 L692,166.9 L688,172.4 L684,176.1 L680,177.3 L676,176.3 L672,174.0 L668,171.4 L664,169.7 L660,169.1 L656,169.6 L652,170.2 L648,170.0 L644,168.0 L640,163.9 L636,158.2 L632,152.0 L628,146.6 L624,143.0 L620,141.9 L616,142.9 L612,145.4 L608,148.0 L604,149.9 L600,150.5 L596,150.1 L592,149.6 L588,149.9 L584,152.0 L580,156.2 L576,161.9 L572,168.2 L568,173.8 L564,177.4 L560,178.7 L556,177.7 L552,175.3 L548,172.8 L544,171.0 L540,170.5 L536,170.9 L532,171.6 L528,171.3 L524,169.3 L520,165.2 Z" class="band"/>
+</g>
+<path d="M520,164.6 L524,168.6 L528,170.6 L532,170.8 L536,170.2 L540,169.6 L544,170.1 L548,171.9 L552,174.4 L556,176.7 L560,177.7 L564,176.4 L568,172.7 L572,167.1 L576,160.8 L580,155.0 L584,150.8 L588,148.7 L592,148.3 L596,148.8 L600,149.2 L604,148.5 L608,146.6 L612,143.9 L616,141.4 L620,140.3 L624,141.4 L628,145.0 L632,150.4 L636,156.6 L640,162.2 L644,166.2 L648,168.2 L652,168.4 L656,167.8 L660,167.2 L664,167.7 L668,169.5 L672,172.0 L676,174.3 L680,175.3 L684,174.0 L688,170.3 L692,164.7 L696,158.4 L700,152.6 L704,148.4 L708,146.3 L712,145.9 L716,146.4 L720,146.8 L724,146.1 L728,144.2 L732,141.5 L736,139.0 L740,137.9 L744,139.0 L748,142.6 L752,148.0 L756,154.2 L760,159.8 L764,163.8 L768,165.8 L772,166.0 L776,165.4 L780,164.8 L784,165.3 L788,167.1 L792,169.6 L796,171.9 L800,172.9 L804,171.6 L808,167.9 L812,162.3 L816,156.0 L820,150.2 L824,146.0 L828,143.9 L832,143.5 L836,144.0 L840,144.4 L844,143.7 L848,141.8 L852,139.1 L856,136.6 L860,135.5 L864,136.6 L868,140.2 L872,145.6 L876,151.8 L880,157.4" pathLength="1" class="med median"/>
+<g class="rollout">
+<path d="M874,112 Q700.0,74 528,112" pathLength="1" class="loop" marker-end="url(#ahead-fc)"/>
+<text x="700.0" y="84" class="tiny fc" text-anchor="middle">h &gt; 192: median fed back as history, run again</text>
+</g>
+<g class="chip0">
+<line x1="70.0" y1="232" x2="70.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="45" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="45.0,262.3 48.3,265.3 51.7,265.5 55.0,265.5 58.3,264.4 61.7,265.0 65.0,266.8 68.3,266.9 71.7,269.0 75.0,269.3 78.3,270.0 81.7,269.1 85.0,264.9 88.3,264.9 91.7,261.1 95.0,258.0" class="mini"/>
+<rect x="45.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="51.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="58.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="64.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="70.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="76.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="83.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="89.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip1">
+<line x1="130.0" y1="232" x2="130.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="105" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="105.0,267.3 108.3,262.1 111.7,260.8 115.0,261.7 118.3,262.5 121.7,263.7 125.0,262.8 128.3,262.5 131.7,259.4 135.0,259.2 138.3,258.7 141.7,258.0 145.0,263.0 148.3,264.7 151.7,269.1 155.0,270.0" class="mini"/>
+<rect x="105.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="111.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="118.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="124.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="130.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="136.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="143.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="149.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip2">
+<line x1="190.0" y1="232" x2="190.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="165" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="165.0,261.0 168.3,263.1 171.7,264.7 175.0,265.1 178.3,265.6 181.7,264.9 185.0,264.3 188.3,264.6 191.7,266.6 195.0,270.0 198.3,268.0 201.7,268.6 205.0,266.8 208.3,261.3 211.7,259.7 215.0,258.0" class="mini"/>
+<rect x="165.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="171.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="178.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="184.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="190.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="196.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="203.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="209.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip3">
+<line x1="250.0" y1="232" x2="250.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="225" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="225.0,266.8 228.3,260.2 231.7,261.1 235.0,261.2 238.3,260.6 241.7,262.4 245.0,261.4 248.3,258.5 251.7,259.9 255.0,258.3 258.3,258.0 261.7,259.2 265.0,259.9 268.3,262.7 271.7,264.4 275.0,270.0" class="mini"/>
+<rect x="225.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="231.8" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="238.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="244.3" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="250.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="256.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="263.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="269.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip4">
+<line x1="310.0" y1="232" x2="310.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="285" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="285.0,264.2 288.3,264.9 291.7,266.0 295.0,265.2 298.3,265.2 321.7,270.0 325.0,265.5 328.3,262.1 331.7,262.1 335.0,258.0" class="mini"/>
+<rect x="285.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="291.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="298.1" y="276" width="5.0" height="10" rx="1" class="mask0"/>
+<rect x="304.4" y="276" width="5.0" height="10" rx="1" class="mask0"/>
+<rect x="310.6" y="276" width="5.0" height="10" rx="1" class="mask0"/>
+<rect x="316.9" y="276" width="5.0" height="10" rx="1" class="mask0"/>
+<rect x="323.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="329.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip5">
+<line x1="370.0" y1="232" x2="370.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="345" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="345.0,267.3 348.3,264.2 351.7,265.7 355.0,265.7 358.3,264.7 361.7,265.1 365.0,264.9 368.3,265.3 371.7,262.4 375.0,260.8 378.3,260.1 381.7,258.0 385.0,263.9 388.3,266.8 391.7,269.9 395.0,270.0" class="mini"/>
+<rect x="345.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="351.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="358.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="364.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="370.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="376.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="383.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="389.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip6">
+<line x1="430.0" y1="232" x2="430.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="405" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="405.0,261.1 408.3,264.5 411.7,267.1 415.0,264.3 418.3,265.7 421.7,266.8 425.0,264.5 428.3,268.5 431.7,268.6 435.0,269.0 438.3,270.0 441.7,269.7 445.0,267.3 448.3,265.7 451.7,260.6 455.0,258.0" class="mini"/>
+<rect x="405.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="411.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="418.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="424.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="430.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="436.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="443.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="449.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<g class="chip7">
+<line x1="490.0" y1="232" x2="490.0" y2="250" class="conn" marker-end="url(#ahead)"/>
+<rect x="465" y="256" width="50" height="16" rx="2" class="chipv"/>
+<polyline points="465.0,266.3 468.3,265.7 471.7,263.2 475.0,261.8 478.3,264.5 481.7,265.3 485.0,262.5 488.3,260.2 491.7,260.3 495.0,258.8 498.3,258.0 501.7,260.8 505.0,259.7 508.3,265.8 511.7,266.1 515.0,270.0" class="mini"/>
+<rect x="465.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="471.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="478.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="484.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="490.6" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="496.9" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="503.1" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+<rect x="509.4" y="276" width="5.0" height="10" rx="1" class="mask1"/>
+</g>
+<text x="560" y="268" class="lbl" text-anchor="start">Normalize, then cut into patches</text>
+<text x="560" y="286" class="mono" text-anchor="start">median / MAD · 32 values ++ 32 mask bits</text>
+<g class="vec0">
+<line x1="70.0" y1="292" x2="70.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="58.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="58.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<rect x="58.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="58.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="58.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="58.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<line x1="70.0" y1="358" x2="70.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec1">
+<line x1="130.0" y1="292" x2="130.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="118.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="118.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="118.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="118.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<rect x="118.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="118.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<line x1="130.0" y1="358" x2="130.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec2">
+<line x1="190.0" y1="292" x2="190.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="178.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="178.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<rect x="178.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="178.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<rect x="178.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="178.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<line x1="190.0" y1="358" x2="190.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec3">
+<line x1="250.0" y1="292" x2="250.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="238.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="238.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<rect x="238.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="238.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="238.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="238.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<line x1="250.0" y1="358" x2="250.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec4">
+<line x1="310.0" y1="292" x2="310.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="298.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="298.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="298.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="298.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<rect x="298.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="298.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<line x1="310.0" y1="358" x2="310.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec5">
+<line x1="370.0" y1="292" x2="370.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="358.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="358.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<rect x="358.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="358.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<rect x="358.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="358.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<line x1="370.0" y1="358" x2="370.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec6">
+<line x1="430.0" y1="292" x2="430.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="418.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="418.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<rect x="418.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="418.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="418.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="418.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<line x1="430.0" y1="358" x2="430.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<g class="vec7">
+<line x1="490.0" y1="292" x2="490.0" y2="308" class="conn" marker-end="url(#ahead)"/>
+<rect x="478.0" y="314" width="24" height="6" rx="1" class="vecc" fill-opacity="0.65"/>
+<rect x="478.0" y="321" width="24" height="6" rx="1" class="vecc" fill-opacity="0.2"/>
+<rect x="478.0" y="328" width="24" height="6" rx="1" class="vecc" fill-opacity="0.8"/>
+<rect x="478.0" y="335" width="24" height="6" rx="1" class="vecc" fill-opacity="0.5"/>
+<rect x="478.0" y="342" width="24" height="6" rx="1" class="vecc" fill-opacity="0.9"/>
+<rect x="478.0" y="349" width="24" height="6" rx="1" class="vecc" fill-opacity="0.35"/>
+<line x1="490.0" y1="358" x2="490.0" y2="378" class="conn" marker-end="url(#ahead)"/>
+</g>
+<text x="560" y="334" class="lbl" text-anchor="start">Residual MLP embedding</text>
+<text x="560" y="352" class="mono" text-anchor="start">64 → 384 → 192 per patch token</text>
+<rect x="28" y="384" width="504" height="156" rx="10" class="block"/>
+<rect x="44" y="396" width="60" height="22" rx="11" class="pill"/>
+<text x="74.1" y="411" class="pilltxt" text-anchor="middle">RMSNorm</text>
+<line x1="107" y1="407" x2="117" y2="407" class="conn" marker-end="url(#ahead)"/>
+<rect x="122.19999999999999" y="396" width="186" height="22" rx="11" class="pill"/>
+<text x="215.0" y="411" class="pilltxt" text-anchor="middle">Attention · 3 heads · RoPE</text>
+<line x1="311" y1="407" x2="321" y2="407" class="conn" marker-end="url(#ahead)"/>
+<rect x="325.79999999999995" y="396" width="60" height="22" rx="11" class="pill"/>
+<text x="355.9" y="411" class="pilltxt" text-anchor="middle">RMSNorm</text>
+<line x1="389" y1="407" x2="399" y2="407" class="conn" marker-end="url(#ahead)"/>
+<rect x="403.99999999999994" y="396" width="80" height="22" rx="11" class="pill"/>
+<text x="443.99999999999994" y="411" class="pilltxt" text-anchor="middle">SwiGLU 768</text>
+<text x="518" y="412" class="times" text-anchor="end">× 8</text>
+<line x1="70.0" y1="426" x2="70.0" y2="500" class="stream"/>
+<line x1="130.0" y1="426" x2="130.0" y2="500" class="stream"/>
+<line x1="190.0" y1="426" x2="190.0" y2="500" class="stream"/>
+<line x1="250.0" y1="426" x2="250.0" y2="500" class="stream"/>
+<line x1="310.0" y1="426" x2="310.0" y2="500" class="stream"/>
+<line x1="370.0" y1="426" x2="370.0" y2="500" class="stream"/>
+<line x1="430.0" y1="426" x2="430.0" y2="500" class="stream"/>
+<line x1="490.0" y1="426" x2="490.0" y2="500" class="stream"/>
+<path d="M70.0,501 Q130.0,464 190.0,501" class="attn-bg"/>
+<path d="M130.0,501 Q190.0,464 250.0,501" class="attn-bg"/>
+<path d="M190.0,501 Q250.0,464 310.0,501" class="attn-bg"/>
+<path d="M250.0,501 Q310.0,464 370.0,501" class="attn-bg"/>
+<path d="M310.0,501 Q370.0,464 430.0,501" class="attn-bg"/>
+<path d="M370.0,501 Q430.0,464 490.0,501" class="attn-bg"/>
+<path d="M70.0,501 Q280.0,350 490.0,501" pathLength="1" class="attn arc0"/>
+<path d="M130.0,501 Q310.0,371 490.0,501" pathLength="1" class="attn arc1"/>
+<path d="M190.0,501 Q340.0,393 490.0,501" pathLength="1" class="attn arc2"/>
+<path d="M250.0,501 Q370.0,415 490.0,501" pathLength="1" class="attn arc3"/>
+<path d="M310.0,501 Q400.0,436 490.0,501" pathLength="1" class="attn arc4"/>
+<path d="M370.0,501 Q430.0,458 490.0,501" pathLength="1" class="attn arc5"/>
+<path d="M430.0,501 Q460.0,479 490.0,501" pathLength="1" class="attn arc6"/>
+<circle cx="70.0" cy="508" r="6.5" class="tok tok0"/>
+<circle cx="130.0" cy="508" r="6.5" class="tok tok1"/>
+<circle cx="190.0" cy="508" r="6.5" class="tok tok2"/>
+<circle cx="250.0" cy="508" r="6.5" class="tok tok3"/>
+<circle cx="310.0" cy="508" r="6.5" class="tok tok4"/>
+<circle cx="370.0" cy="508" r="6.5" class="tok tok5"/>
+<circle cx="430.0" cy="508" r="6.5" class="tok tok6"/>
+<circle cx="490.0" cy="508" r="6.5" class="tok tok7"/>
+<circle cx="490.0" cy="508" r="11" class="ring ring"/>
+<text x="560" y="420" class="lbl" text-anchor="start">8 pre-norm Transformer blocks</text>
+<text x="560" y="438" class="mono" text-anchor="start">d_model 192 · bidirectional over the history</text>
+<rect x="560" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="560" y="452" width="14" height="14" rx="3" class="pipon pip0"/>
+<rect x="580" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="580" y="452" width="14" height="14" rx="3" class="pipon pip1"/>
+<rect x="600" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="600" y="452" width="14" height="14" rx="3" class="pipon pip2"/>
+<rect x="620" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="620" y="452" width="14" height="14" rx="3" class="pipon pip3"/>
+<rect x="640" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="640" y="452" width="14" height="14" rx="3" class="pipon pip4"/>
+<rect x="660" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="660" y="452" width="14" height="14" rx="3" class="pipon pip5"/>
+<rect x="680" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="680" y="452" width="14" height="14" rx="3" class="pipon pip6"/>
+<rect x="700" y="452" width="14" height="14" rx="3" class="pip"/>
+<rect x="700" y="452" width="14" height="14" rx="3" class="pipon pip7"/>
+<text x="726" y="463" class="tiny" text-anchor="start">layer 1 → 8</text>
+<path d="M490.0,520 L490.0,582 L556,582" class="conn" marker-end="url(#ahead)"/>
+<path d="M490.0,520 L490.0,582 L556,582" pathLength="1" class="sig sig1"/>
+<rect x="560" y="560" width="300" height="44" rx="8" class="head"/>
+<rect x="560" y="560" width="300" height="44" rx="8" class="headon headon"/>
+<text x="574" y="578" class="lbl" text-anchor="start">Quantile head on the last patch token</text>
+<text x="574" y="595" class="mono" text-anchor="start">RMSNorm → MLP 192 → 768 → 192 × 9</text>
+<path d="M860,582 L908,582 L908,170 L886,170" class="conn fcs" marker-end="url(#ahead-fc)"/>
+<path d="M860,582 L908,582 L908,170 L886,170" pathLength="1" class="sig sig2"/>
+<text x="40" y="636" class="foot" text-anchor="start">Inference: forecast x and −x in one batch, then q<tspan dy="3" class="subs">τ</tspan><tspan dy="-3"> = ½ · (q</tspan><tspan dy="3" class="subs">τ</tspan><tspan dy="-3">(x) − q</tspan><tspan dy="3" class="subs">1−τ</tspan><tspan dy="-3">(−x)). Trained with the pinball loss on 9 quantiles, 0.1 … 0.9.</tspan></text>
+</svg>

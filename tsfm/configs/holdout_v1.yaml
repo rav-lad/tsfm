@@ -1,4 +1,4 @@
-# Frozen synthetic evaluation suites (reference §11.1–11.2, sprint D4).
+# Frozen synthetic evaluation suites.
 # Each suite = base config + overlay, with its own seed namespace (split name).
 # Distributions in overlays REPLACE the base distribution (see config.deep_merge).
 #

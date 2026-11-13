@@ -1,4 +1,4 @@
-"""G5 — SDEs with regime switching and volatility (reference §4 G5, TempoPFN-inspired).
+"""G5 — SDEs with regime switching and volatility (TempoPFN-inspired).
 
     dy_t = theta_{r_t} (mu_{r_t} - y_t) dt + sigma_{r_t} dW_t,   r_t Markov chain
 
@@ -9,7 +9,7 @@ Kinds:
 - jump_diffusion  : OU or Brownian base + compound-Poisson jumps
 - regime_gbm      : log-space regime drift/vol -> positive series
 
-Numerics (documented, as required by §4 G5):
+Numerics:
 - time unit = one observation step;
 - OU segments use the *exact* discretization of the OU transition (no
   Euler bias, stable for any theta);

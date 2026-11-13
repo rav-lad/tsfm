@@ -1,4 +1,4 @@
-"""G5 (regime SDE) and G7 (composite) specific tests (reference §4, §12.1)."""
+"""G5 (regime SDE) and G7 (composite) specific tests."""
 
 from __future__ import annotations
 

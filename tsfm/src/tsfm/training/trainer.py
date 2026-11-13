@@ -1,4 +1,4 @@
-"""Minimal training loop for models V0 / V1 (roadmap phase 3, step B).
+"""Minimal training loop for models V0 / V1.
 
 - Loss: MAE for a point model (V0), pinball over the quantile levels for a
   quantile model (V1), both on the normalized scale. ``loss_weighting`` (quantile

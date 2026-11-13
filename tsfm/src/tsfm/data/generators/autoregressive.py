@@ -1,4 +1,4 @@
-"""G4 — AR / ARMA / random walk / mean reversion / white noise (reference §4 G4).
+"""G4 — AR / ARMA / random walk / mean reversion / white noise.
 
 Stable AR(p) coefficients are drawn through partial autocorrelations in (-1, 1)
 (Levinson–Durbin), which guarantees all roots lie outside the unit circle.

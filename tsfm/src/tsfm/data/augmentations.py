@@ -1,4 +1,4 @@
-"""Support-aware augmentations on source records (reference §9.1).
+"""Support-aware augmentations on source records.
 
 Each episode samples ``none / one / multiple`` operations; every applied
 operation is logged in metadata. Operations act jointly on all channels of a

@@ -1,4 +1,4 @@
-"""G3 tests: the RFF path must reproduce the exact covariance (reference §12.1)."""
+"""G3 tests: the RFF path must reproduce the exact covariance."""
 
 from __future__ import annotations
 

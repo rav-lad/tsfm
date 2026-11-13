@@ -1,4 +1,4 @@
-"""Sprint D4 tests: holdout exclusions, frozen suites, reproducibility (§11, §16 D4)."""
+"""Sprint D4 tests: holdout exclusions, frozen suites, reproducibility."""
 
 from __future__ import annotations
 

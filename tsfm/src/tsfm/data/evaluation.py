@@ -1,4 +1,4 @@
-"""Reference forecasts, metrics and relational diagnostics (reference §5.4, §12.3, §13.1).
+"""Reference forecasts, metrics and relational diagnostics.
 
 Everything is computed on the leak-free normalized scale (past statistics only),
 so scores are comparable across families and scales.

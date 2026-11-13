@@ -1,5 +1,5 @@
 # Data config V0 — sprint D1/D2 (univariate, fast generators only).
-# All numbers are starting hypotheses to ablate (TSFM_DATA_REFERENCE.md §1.2, §15.2).
+# All numbers are starting hypotheses to ablate.
 schema_version: 1
 seed: 20261107
 training_data: synthetic_only

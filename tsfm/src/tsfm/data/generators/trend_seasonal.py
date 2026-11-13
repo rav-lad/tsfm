@@ -1,4 +1,4 @@
-"""G1 — trends + classical seasonalities (ForecastPFN-style prior, reference §4 G1).
+"""G1 — trends + classical seasonalities (ForecastPFN-style prior).
 
     y_t = trend(t) (+|x) sum_k A_k * shape_k(2 pi t / P_k + phi_k) * damping(t) + noise
 

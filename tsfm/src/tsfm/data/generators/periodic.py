@@ -1,4 +1,4 @@
-"""G2 — complex periodicity and asymmetry (reference §4 G2, inspired by TempoPFN).
+"""G2 — complex periodicity and asymmetry (inspired by TempoPFN).
 
 Waveforms are evaluated from a phase function, which allows frequency modulation
 (slowly drifting period) and chirps. Sharp waveforms (square, sawtooth) are

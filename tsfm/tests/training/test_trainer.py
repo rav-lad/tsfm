@@ -89,6 +89,57 @@ def test_v1_trains_with_pinball_and_reloads(tmp_path):
         assert torch.equal(a.cpu(), b)
 
 
+def test_v1_trains_with_loss_weighting_and_augmented_config(tmp_path):
+    aug = str(Path(__file__).parents[2] / "configs" / "train_v1_aug.yaml")
+    t = Trainer(_cfg(tmp_path, model="v1", data_config=aug, loss_weighting=["harmonic", "naive_scale"]),
+                replace(TINY, quantiles=V1_QUANTILES))
+    t.train()
+    assert t.step == 6
+    with pytest.raises(ValueError, match="loss_weighting"):
+        Trainer(_cfg(tmp_path / "x", loss_weighting=["nope"]), TINY)
+
+
+def test_loss_weights():
+    from tsfm.training.losses import harmonic_horizon_weights, masked_pinball, naive_scale_weights
+
+    assert torch.allclose(harmonic_horizon_weights(4), torch.tensor([1, 1 / 2, 1 / 3, 1 / 4]))
+    # rows: smooth ramp (step 0.01 -> clamped to 0.05) and alternating +-1 (step 2)
+    x = torch.stack([torch.arange(8) * 0.01, torch.tensor([1.0, -1] * 4)])[:, None]
+    ones = torch.ones_like(x, dtype=torch.bool)
+    w = naive_scale_weights(x, ones, ones, origin=8)
+    assert torch.allclose(w.squeeze(), torch.tensor([20.0, 0.5]))
+    q = torch.zeros(2, 1, 3, 1)
+    y = torch.tensor([[[1.0, 1, 1]], [[3.0, 3, 3]]])
+    mask = torch.ones_like(y, dtype=torch.bool)
+    # weighted mean of the per-row losses 0.5 and 1.5 with weights 20 and 0.5
+    assert masked_pinball(q, y, mask, (0.5,), w).item() == pytest.approx((20 * 0.5 + 0.5 * 1.5) / 20.5)
+
+
+class _NanAt(Trainer):
+    """Returns a NaN loss on the given steps."""
+
+    nan_steps: set[int] = set()
+
+    def loss(self, out, labels, inputs=None):
+        loss = super().loss(out, labels, inputs)
+        return loss * float("nan") if self.step in self.nan_steps else loss
+
+
+def test_non_finite_step_is_skipped(tmp_path):
+    t = _NanAt(_cfg(tmp_path), TINY)
+    t.nan_steps = {2}
+    t.train()
+    assert t.step == 6 and t.skipped_steps == 1
+    assert all(torch.isfinite(p).all() for p in t.model.parameters())
+    lines = [json.loads(x) for x in (tmp_path / "metrics.jsonl").read_text().splitlines()]
+    assert [r["skipped_steps"] for r in lines] == [0, 0, 1, 0, 0, 0]
+
+    t = _NanAt(_cfg(tmp_path / "all", total_episodes=30 * 8), TINY)
+    t.nan_steps = set(range(30))
+    with pytest.raises(FloatingPointError, match="in a row"):
+        t.train()
+
+
 def test_unknown_model_preset(tmp_path):
     with pytest.raises(ValueError, match="preset"):
         Trainer(_cfg(tmp_path, model="v9"))

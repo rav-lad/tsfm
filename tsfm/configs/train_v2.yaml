@@ -1,0 +1,11 @@
+# Training distribution for model V2 (future tokens, max_horizon 1024).
+# train_v1 + long horizons (up to 1024: GIFT-Eval long terms reach 900) and
+# long contexts (up to 2048). Horizons need not be multiples of the patch size:
+# the model emits whole future patches and the loss mask cuts the excess.
+# The 384-step val_ood_horizon holdout is now inside the training support.
+extends: train_v1.yaml
+overrides:
+  stage: model_v2_long_horizon
+  sequence:
+    context_lengths: {32: 0.06, 64: 0.08, 128: 0.10, 256: 0.14, 512: 0.20, 1024: 0.22, 2048: 0.20}
+    horizons: {24: 0.10, 48: 0.12, 96: 0.18, 192: 0.18, 336: 0.14, 720: 0.16, 1024: 0.12}

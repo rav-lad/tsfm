@@ -1,0 +1,11 @@
+# train_v1 with fixed augmentations (ablation, 2026-11-13).
+# - "scale" and "offset" are dropped: the per-episode median/MAD normalization
+#   undoes them exactly, so they only used up augmentation draws.
+# - TiRex augmentations (Auer et al. 2025, App. B), each with its own probability:
+#   amplitude modulation 0.5, censoring 0.5, periodic spike injection 0.05.
+extends: train_v1.yaml
+overrides:
+  stage: model_v1_aug
+  augmentations:
+    ops: [sign_flip, noise, outliers]
+    tirex: {amplitude_modulation: 0.5, censor: 0.5, spike_injection: 0.05}

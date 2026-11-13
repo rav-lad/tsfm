@@ -6,6 +6,12 @@ visible history, left padding to whole patches), model forward with
 ``horizon = prediction_length`` (rollout beyond ``max_horizon``), denormalize.
 A quantile model (V1) returns ``(median, quantiles)``; its levels must be the
 GIFT-Eval ones (``V1_QUANTILES``), so no interpolation is involved.
+
+``symmetric=True`` (Timestral / TempoPFN symmetric averaging) also forecasts the
+negated series in the same batch and averages the reflected forecast with the
+original one: ``q_tau = (q_tau(x) - q_{1-tau}(-x)) / 2``. Levels are symmetric
+around 0.5, so the median stays the middle quantile. On ``v1_gpu_8h`` it moves
+GIFT-Eval rel. MASE from 0.966 to 0.927 (WQL 0.660 -> 0.651).
 """
 
 from __future__ import annotations
@@ -33,7 +39,7 @@ def context_episode(context: np.ndarray, prediction_length: int, max_context: in
 
 
 def model_predictor(model: nn.Module, device: str | torch.device = "cpu", batch_size: int = 256,
-                    max_context: int = 1024, pad_to_multiple: int = 32) -> Predictor:
+                    max_context: int = 1024, pad_to_multiple: int = 32, symmetric: bool = True) -> Predictor:
     model = model.to(device).eval()
     levels = tuple(getattr(model, "quantile_levels", ()) or ())
     if levels and (len(levels) != len(QUANTILES) or not np.allclose(levels, QUANTILES)):
@@ -47,12 +53,22 @@ def model_predictor(model: nn.Module, device: str | torch.device = "cpu", batch_
         order = np.argsort([min(len(c), max_context) for c in contexts], kind="stable")
         for start in range(0, len(order), batch_size):
             idx = order[start : start + batch_size]
-            eps = [context_episode(contexts[i], prediction_length, max_context) for i in idx]
+            ctx = [contexts[i] for i in idx]
+            if symmetric:  # negated copies in the same batch, rows [n, 2n)
+                ctx += [-np.asarray(c, np.float32) for c in ctx]
+            eps = [context_episode(c, prediction_length, max_context) for c in ctx]
             inputs, _ = split_batch(to_torch(collate_episodes(eps, pad_to_multiple=pad_to_multiple), device))
             res = model(**inputs, horizon=prediction_length)
-            out[idx] = denormalize(res["prediction"].float(), inputs["scaling_stats"])[:, 0].cpu().numpy()
+            point = denormalize(res["prediction"].float(), inputs["scaling_stats"])[:, 0].cpu().numpy()
+            q = denormalize(res["quantiles"].float(), inputs["scaling_stats"])[:, 0].cpu().numpy() if levels else None
+            if symmetric:
+                n = len(idx)
+                point = 0.5 * (point[:n] - point[n:])
+                if q is not None:
+                    q = 0.5 * (q[:n] - q[n:, :, ::-1])
+            out[idx] = point
             if quant is not None:
-                quant[idx] = denormalize(res["quantiles"].float(), inputs["scaling_stats"])[:, 0].cpu().numpy()
+                quant[idx] = q
         return out if quant is None else (out, quant)
 
     return predict

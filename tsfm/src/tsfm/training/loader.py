@@ -179,8 +179,13 @@ def _numpy_to_torch(batch: NumpyBatch) -> TorchBatch:
 
 
 def to_torch(batch: NumpyBatch | TorchBatch, device: str | torch.device = "cpu") -> TorchBatch:
-    """Convert (if needed) and move a batch to ``device``."""
-    non_blocking = torch.device(device).type == "cuda"
+    """Convert (if needed) and move a batch to ``device``.
+
+    Copies are non-blocking on CUDA but blocking on ROCm: on the RX 6800 XT
+    (ROCm, Windows) non-blocking copies from pinned memory corrupted the model
+    weights with infs within a few hundred V2 steps; blocking copies cost nothing
+    measurable (2026-11-13)."""
+    non_blocking = torch.device(device).type == "cuda" and torch.version.hip is None
     out = {}
     for k, v in batch.items():
         t = v if isinstance(v, torch.Tensor) else torch.from_numpy(np.ascontiguousarray(v))

@@ -1,7 +1,8 @@
-"""Train a model (V0 point, V1 quantiles) on the on-the-fly synthetic stream.
+"""Train a model (V0 point, V1 quantiles, V2 future tokens) on the on-the-fly synthetic stream.
 
     uv run python scripts/train.py                                   # full run (train_v0.yaml)
     uv run python scripts/train.py --model v1 --run-dir runs/v1      # quantile model (pinball loss)
+    uv run python scripts/train.py --model v2 --data-config configs/train_v2.yaml --run-dir runs/v2   # horizons to 1024
     uv run python scripts/train.py --total-episodes 20000 --run-dir runs/smoke
     uv run python scripts/train.py --run-dir runs/v0 --resume        # continue from last.pt
     uv run python scripts/train.py --run-dir runs/v1 --stop-after-hours 11 [--resume]  # time-limited session
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import sys
 import typing
 from pathlib import Path
 
@@ -36,7 +38,17 @@ def _add_flags(ap: argparse.ArgumentParser) -> None:
             ap.add_argument(flag, type=base, default=default)
 
 
+def _keep_awake() -> None:
+    """Windows: no sleep while this process runs (long unattended runs); the display may still turn off."""
+    if sys.platform == "win32":
+        import ctypes
+
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+
+
 def main() -> None:
+    _keep_awake()
     ap = argparse.ArgumentParser()
     _add_flags(ap)
     ap.add_argument("--resume", action="store_true")

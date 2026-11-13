@@ -1,7 +1,9 @@
 """Minimal training loop for models V0 / V1 (roadmap phase 3, step B).
 
 - Loss: MAE for a point model (V0), pinball over the quantile levels for a
-  quantile model (V1), both on the normalized scale.
+  quantile model (V1), both on the normalized scale. ``loss_weighting`` (quantile
+  models) multiplies per-position weights: ``harmonic`` (1/h, Timer-M1) and/or
+  ``naive_scale`` (1 / one-step variability of the history, MASE-like).
 
 - Data: infinite on-the-fly stream; ``step`` = batch index, so resuming is
   ``start_batch = step`` and reproduces the exact remaining stream.
@@ -11,6 +13,8 @@
 - Logs (``metrics.jsonl``): loss, lr, grad norm, episodes/s and the fraction of
   wall time spent waiting for the DataLoader (the number that says whether
   on-the-fly generation is free).
+- A step with a non-finite gradient is skipped (counted in ``skipped_steps``);
+  ``MAX_CONSECUTIVE_SKIPS`` in a row abort the run with ``crash.pt``.
 - Periodic evaluation on frozen suites, ``last.pt`` / ``best.pt`` checkpoints.
 """
 
@@ -28,10 +32,14 @@ import torch
 from tsfm.data import load_config
 from tsfm.data.config import config_hash
 from tsfm.models import MODEL_PRESETS, PatchTransformerV0, PatchV0Config
+from tsfm.models.patch_v0 import forecast_origin
 
 from .evaluate import evaluate_suite
 from .loader import make_train_loader, split_batch, to_torch
-from .losses import masked_mae, masked_pinball
+from .losses import harmonic_horizon_weights, masked_mae, masked_pinball, naive_scale_weights
+
+LOSS_WEIGHTINGS = ("harmonic", "naive_scale")
+MAX_CONSECUTIVE_SKIPS = 20  # non-finite steps in a row before giving up
 
 
 @dataclass
@@ -59,6 +67,7 @@ class TrainConfig:
     val_root: str = "data/holdouts/holdout_v1"
     val_suites: list[str] = field(default_factory=lambda: ["val_id"])
     best_metric_suite: str = "val_id"
+    loss_weighting: list[str] = field(default_factory=list)  # subset of LOSS_WEIGHTINGS
 
 
 def resolve_device(device: str) -> torch.device:
@@ -111,6 +120,9 @@ class Trainer:
         if model_cfg is None and cfg.model not in MODEL_PRESETS:
             raise ValueError(f"unknown model preset {cfg.model!r}: {sorted(MODEL_PRESETS)}")
         self.model_cfg = model_cfg or MODEL_PRESETS[cfg.model]
+        unknown = set(cfg.loss_weighting) - set(LOSS_WEIGHTINGS)
+        if unknown:
+            raise ValueError(f"unknown loss_weighting {sorted(unknown)}: {LOSS_WEIGHTINGS}")
         self.model = PatchTransformerV0(self.model_cfg).to(self.device)
         self.opt = make_optimizer(self.model, cfg.lr, cfg.weight_decay)
         self.sched = torch.optim.lr_scheduler.LambdaLR(
@@ -119,6 +131,7 @@ class Trainer:
         self.amp_dtype = resolve_amp_dtype(cfg.amp_dtype) if cfg.amp and self.device.type == "cuda" else None
         self.scaler = torch.amp.GradScaler("cuda", enabled=self.amp_dtype is torch.float16)
         self.step = 0
+        self.skipped_steps = 0
         self.best = math.inf
         self.eval_cache: dict[str, Any] = {}
         if resume and (self.run_dir / "last.pt").exists():
@@ -172,10 +185,20 @@ class Trainer:
         print(f"resumed from {path} at step {self.step}")
 
     # ------------------------------------------------------------------ loop
-    def loss(self, out: dict[str, torch.Tensor], labels: dict[str, torch.Tensor]) -> torch.Tensor:
+    def loss(self, out: dict[str, torch.Tensor], labels: dict[str, torch.Tensor],
+             inputs: dict[str, torch.Tensor] | None = None) -> torch.Tensor:
         y, mask = labels["target_future"], labels["loss_mask"]
         if self.model.quantile_levels:
-            return masked_pinball(out["quantiles"].float(), y, mask, self.model.quantile_levels)
+            w = None
+            if "harmonic" in self.cfg.loss_weighting:
+                w = harmonic_horizon_weights(y.shape[-1], y.device)
+            if "naive_scale" in self.cfg.loss_weighting:
+                origin = forecast_origin(inputs["padding_mask"], inputs["lengths"])
+                ws = naive_scale_weights(inputs["input_values"], inputs["input_mask"], inputs["padding_mask"], origin)
+                w = ws if w is None else w * ws
+            return masked_pinball(out["quantiles"].float(), y, mask, self.model.quantile_levels, w)
+        if self.cfg.loss_weighting:
+            raise ValueError("loss_weighting needs a quantile model")
         return masked_mae(out["prediction"].float(), y, mask)
 
     def evaluate(self, suites: list[str], max_batches: int | None) -> dict[str, dict[str, Any]]:
@@ -218,7 +241,8 @@ class Trainer:
 
         self.model.train()
         it = iter(loader)
-        win_t0, win_wait, win_steps = time.perf_counter(), 0.0, 0
+        win_t0, win_wait, win_steps, win_skips = time.perf_counter(), 0.0, 0, 0
+        consecutive_skips = 0
         loss_sum = torch.zeros((), device=self.device)
         grad_sum = torch.zeros((), device=self.device)
         while self.step < stop_at:
@@ -230,33 +254,46 @@ class Trainer:
             with torch.autocast(self.device.type, dtype=self.amp_dtype or torch.bfloat16,
                                 enabled=self.amp_dtype is not None):
                 out = self.model(**inputs)
-            loss = self.loss(out, labels)
+            loss = self.loss(out, labels, inputs)
             self.opt.zero_grad(set_to_none=True)
             self.scaler.scale(loss).backward()
             self.scaler.unscale_(self.opt)
             grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), cfg.grad_clip)
-            self.scaler.step(self.opt)  # skipped on inf/nan gradients when fp16 loss scaling is on
-            self.scaler.update()
+            finite = self.scaler.is_enabled() or bool(torch.isfinite(grad_norm))
+            if finite:
+                self.scaler.step(self.opt)  # skipped on inf/nan gradients when fp16 loss scaling is on
+                self.scaler.update()
+                consecutive_skips = 0
+            else:  # rare non-finite step (seen once on ROCm with V2): drop it, keep the weights
+                self.skipped_steps += 1
+                consecutive_skips += 1
+                win_skips += 1
+                if consecutive_skips > MAX_CONSECUTIVE_SKIPS:
+                    self.save("crash.pt")
+                    raise FloatingPointError(f"{consecutive_skips} non-finite steps in a row at step {self.step}")
             self.sched.step()
             self.step += 1
             win_steps += 1
             if time.time() >= deadline:
                 stop_at = self.step  # the log / eval / checkpoint branches below fire on this step
-            loss_sum += loss.detach()
-            grad_sum += grad_norm.detach()
+            if finite:
+                loss_sum += loss.detach()
+                grad_sum += grad_norm.detach()
 
             if self.step % cfg.log_every == 0 or self.step == stop_at:
                 if self.device.type == "cuda":
                     torch.cuda.synchronize()
                 dt = time.perf_counter() - win_t0
-                mean_loss = (loss_sum / win_steps).item()
+                kept = max(win_steps - win_skips, 1)
+                mean_loss = (loss_sum / kept).item()
                 if not math.isfinite(mean_loss):
                     self.save("crash.pt")
                     raise FloatingPointError(f"non-finite loss at step {self.step} (state saved to crash.pt)")
                 rec = {
                     "step": self.step,
                     "loss": mean_loss,
-                    "grad_norm": (grad_sum / win_steps).item(),
+                    "grad_norm": (grad_sum / kept).item(),
+                    "skipped_steps": win_skips,
                     "lr": self.sched.get_last_lr()[0],
                     "episodes_per_s": win_steps * cfg.batch_size / dt,
                     "data_wait_frac": win_wait / dt,
@@ -264,8 +301,9 @@ class Trainer:
                 self._log(rec)
                 print(f"step {self.step:>6}/{self.total_steps} | loss {rec['loss']:.4f} | "
                       f"grad {rec['grad_norm']:.2f} | lr {rec['lr']:.2e} | "
-                      f"{rec['episodes_per_s']:.0f} ep/s | data wait {rec['data_wait_frac']:.0%}")
-                win_t0, win_wait, win_steps = time.perf_counter(), 0.0, 0
+                      f"{rec['episodes_per_s']:.0f} ep/s | data wait {rec['data_wait_frac']:.0%}"
+                      + (f" | skipped {win_skips} non-finite" if win_skips else ""))
+                win_t0, win_wait, win_steps, win_skips = time.perf_counter(), 0.0, 0, 0
                 loss_sum.zero_()
                 grad_sum.zero_()
 

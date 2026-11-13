@@ -105,6 +105,8 @@ class SyntheticEpisodeSource:
         aug = config.get("augmentations", {}) or {}
         self.aug_probability = float(aug.get("probability_any", 0.0))
         self.aug_max_ops = int(aug.get("max_ops", 3))
+        self.aug_ops = tuple(aug["ops"]) if aug.get("ops") is not None else None
+        self.aug_tirex = dict(aug.get("tirex") or {})
 
     # ------------------------------------------------------------------ curriculum
     def multivariate_probability(self, sample_id: int, progress: float | None = None) -> float:
@@ -152,7 +154,8 @@ class SyntheticEpisodeSource:
         record = gen.sample(self._rng(sample_id, Stream.RECORD, attempt), length, L)
         check_record(record)
         record = augment_record(
-            record, self._rng(sample_id, Stream.AUGMENT, attempt), self.aug_probability, self.aug_max_ops
+            record, self._rng(sample_id, Stream.AUGMENT, attempt), self.aug_probability, self.aug_max_ops,
+            enabled=self.aug_ops, tirex=self.aug_tirex,
         )
         check_record(record)
         roles = record.metadata.get("roles")

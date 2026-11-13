@@ -124,6 +124,22 @@ def test_quantile_model_predictor_returns_median_and_quantiles():
     assert (np.diff(q, axis=-1) >= -1e-4).all()
 
 
+def test_symmetric_averaging_is_odd_and_matches_two_passes():
+    model = PatchTransformerV0(PatchV0Config(n_layers=1, quantiles=V1_QUANTILES))
+    contexts = [np.random.default_rng(i).normal(100, 5, n).astype(np.float32) for i, n in enumerate((40, 300, 90))]
+    sym = model_predictor(model, batch_size=2)
+    single = model_predictor(model, batch_size=2, symmetric=False)
+    m, q = sym(contexts, 250, 1)
+    m_neg, q_neg = sym([-c for c in contexts], 250, 1)
+    np.testing.assert_allclose(m_neg, -m, rtol=1e-5, atol=1e-3)  # f(-x) = -f(x) by construction
+    np.testing.assert_allclose(q_neg, -q[..., ::-1], rtol=1e-5, atol=1e-3)
+    m1, q1 = single(contexts, 250, 1)
+    m2, q2 = single([-c for c in contexts], 250, 1)
+    np.testing.assert_allclose(m, 0.5 * (m1 - m2), rtol=1e-5, atol=1e-3)
+    np.testing.assert_allclose(q, 0.5 * (q1 - q2[..., ::-1]), rtol=1e-5, atol=1e-3)
+    np.testing.assert_allclose(m, q[..., 4], rtol=1e-6)
+
+
 def test_predictor_rejects_other_quantile_levels():
     with pytest.raises(ValueError, match="GIFT-Eval levels"):
         model_predictor(PatchTransformerV0(PatchV0Config(n_layers=1, quantiles=(0.25, 0.5, 0.75))))

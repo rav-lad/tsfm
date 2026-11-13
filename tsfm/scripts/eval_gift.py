@@ -5,10 +5,14 @@
     uv run python scripts/eval_gift.py --model seasonal_naive         # protocol check vs official scores
     uv run python scripts/eval_gift.py --model runs/v0/best.pt        # our model
     uv run python scripts/eval_gift.py --model runs/v0/best.pt --datasets m4 ett1 --terms short   # quick subset
+    uv run python scripts/eval_gift.py --model runs/v0/best.pt --no-symmetric   # single pass, no x / -x averaging
 
 Writes reports/gift_eval/<name>.csv (one row per config) and <name>.md
 (leaderboard-style aggregate: geometric mean of MASE / Seasonal-Naive MASE,
 next to the official scores of reference models on the same configs).
+
+Checkpoints are scored with symmetric averaging (forecast x and -x, average the
+reflected forecast; report name suffixed ``_sym``) unless ``--no-symmetric``.
 
 The model is point-forecast only: its WQL ("CRPS" column) treats the point as
 every quantile, which equals ND and is pessimistic. Compare models on MASE.
@@ -35,9 +39,9 @@ def _predictor(args):
 
     device = resolve_device(args.device)
     model = load_model(args.model, device)
-    name = args.name or "_".join(Path(args.model).with_suffix("").parts[-2:])
-    print(f"{args.model}: {model.num_parameters():,} params on {device}")
-    return model_predictor(model, device, args.batch_size, args.max_context), name
+    name = args.name or "_".join(Path(args.model).with_suffix("").parts[-2:]) + ("_sym" if args.symmetric else "")
+    print(f"{args.model}: {model.num_parameters():,} params on {device} | symmetric averaging {args.symmetric}")
+    return model_predictor(model, device, args.batch_size, args.max_context, symmetric=args.symmetric), name
 
 
 def _report(name: str, rows: list[dict], partial: bool) -> str:
@@ -80,6 +84,8 @@ def main() -> None:
     ap.add_argument("--device", default="auto")
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--max-context", type=int, default=1024)
+    ap.add_argument("--symmetric", action=argparse.BooleanOptionalAction, default=True,
+                    help="also forecast -x and average the reflected forecast (2x inference cost)")
     args = ap.parse_args()
 
     if args.download:

@@ -1,8 +1,14 @@
-"""Models V0 / V1: univariate patch Transformer, direct multi-horizon forecast.
+"""Models V0 / V1 / V2: univariate patch Transformer, direct multi-horizon forecast.
 
 - V0: point forecast (``quantiles=()``), trained with MAE.
 - V1: quantile forecast (``quantiles=V1_QUANTILES``), trained with the pinball
   loss; ``prediction`` is the median, ``quantiles`` the full set.
+- V2: V1 with future patch tokens (``future_tokens=True``, Chronos-2 / Timestral
+  DHF-like) and ``max_horizon=1024``: one learned token per future patch is
+  appended after the history, every token attends to every other one, and each
+  future token is decoded into its own ``patch_size x Q`` block. The horizon is
+  produced in one pass up to ``max_horizon`` (no rollout), and the number of
+  future tokens follows the requested horizon.
 
 Roadmap phase 2 / V0-V1 (Timestral-5M-like sizes)::
 
@@ -11,6 +17,7 @@ Roadmap phase 2 / V0-V1 (Timestral-5M-like sizes)::
     -> residual MLP embedding              [N, P, d]
     -> n_layers x (RMSNorm, attention + RoPE, RMSNorm, SwiGLU), bidirectional
     -> last history patch -> RMSNorm -> residual MLP head -> max_horizon x Q
+       (V2: ++ future tokens before the blocks; each -> head -> patch_size x Q)
 
 Everything stays in the normalized space produced by ``collate_episodes``.
 The model only reads ``input_values[..., :origin]``: the future part of the
@@ -48,6 +55,7 @@ class PatchV0Config:
     max_horizon: int = 192
     rope_base: float = 10_000.0
     quantiles: tuple[float, ...] = ()  # () = point forecast (V0)
+    future_tokens: bool = False  # V2: one token per future patch instead of a last-token head
 
 
 class ResidualMLP(nn.Module):
@@ -135,15 +143,21 @@ class PatchTransformerV0(nn.Module):
         self.embed = ResidualMLP(2 * cfg.patch_size, cfg.embed_hidden, cfg.d_model)
         self.blocks = nn.ModuleList(Block(cfg) for _ in range(cfg.n_layers))
         self.norm = nn.RMSNorm(cfg.d_model)
-        self.head = ResidualMLP(cfg.d_model, cfg.head_hidden, cfg.max_horizon * self.n_outputs)
+        if cfg.future_tokens:
+            self.future_embed = nn.Parameter(0.02 * torch.randn(cfg.d_model))
+            self.head = ResidualMLP(cfg.d_model, cfg.head_hidden, cfg.patch_size * self.n_outputs)
+        else:
+            self.head = ResidualMLP(cfg.d_model, cfg.head_hidden, cfg.max_horizon * self.n_outputs)
 
     def num_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
     # ------------------------------------------------------------------ core
-    def forecast_series(self, x: Tensor, observed: Tensor, real: Tensor) -> Tensor:
+    def forecast_series(self, x: Tensor, observed: Tensor, real: Tensor, horizon: int | None = None) -> Tensor:
         """One pass. ``x, observed, real``: [N, T] history ending at the origin
-        (``real`` = not padding). Returns [N, max_horizon, Q] (Q = 1 for V0)."""
+        (``real`` = not padding). Returns [N, max_horizon, Q] (Q = 1 for V0); with
+        future tokens, [N, K * patch_size, Q] where K = ceil(horizon / patch_size)
+        (at most max_horizon / patch_size)."""
         p = self.cfg.patch_size
         pad = (-x.shape[1]) % p
         if pad:  # left-pad so the last patch ends exactly at the origin
@@ -155,12 +169,20 @@ class PatchTransformerV0(nn.Module):
         tokens = torch.cat([x.view(N, P, p), obs.view(N, P, p).to(x.dtype)], dim=-1)
         key_mask = real.view(N, P, p).any(-1)
         # positions counted back from the origin: left padding never shifts real patches
-        positions = torch.arange(P, device=x.device) - (P - 1)
-
         h = self.embed(tokens)
+        K = 0
+        if self.cfg.future_tokens:  # future patches sit at positions 1..K after the origin
+            K = min(-(-(horizon or self.cfg.max_horizon) // p), self.cfg.max_horizon // p)
+            h = torch.cat([h, self.future_embed.to(h.dtype).expand(N, K, -1)], 1)
+            key_mask = torch.cat([key_mask, key_mask.new_ones(N, K)], 1)
+        positions = torch.arange(P + K, device=x.device) - (P - 1)
+
         for block in self.blocks:
             h = block(h, positions, key_mask)
-        out = self.head(self.norm(h[:, -1])).view(N, self.cfg.max_horizon, self.n_outputs)
+        if K:
+            out = self.head(self.norm(h[:, P:])).view(N, K * p, self.n_outputs)
+        else:
+            out = self.head(self.norm(h[:, -1])).view(N, self.cfg.max_horizon, self.n_outputs)
         if self.quantile_levels and not self.training:
             out = out.sort(dim=-1).values  # no quantile crossing at inference
         return out
@@ -194,7 +216,7 @@ class PatchTransformerV0(nn.Module):
         steps: list[Tensor] = []
         done = 0
         while done < horizon:
-            y = self.forecast_series(x, observed, real)
+            y = self.forecast_series(x, observed, real, horizon - done)
             steps.append(y)
             done += y.shape[1]
             if done < horizon:  # rollout: the point / median becomes observed history
